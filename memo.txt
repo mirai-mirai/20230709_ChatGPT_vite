@@ -252,7 +252,22 @@ APIの接続先を変えたか？？
 
 デプロイしてみる
 
+またAnauthorizedになった。。。
+github Pagesからアクセスするとexpireしてしまう？？？
 
+OpenAI may also automatically rotate any API key that we've found has leaked publicly.
+
+Then it might be why. Github is scanning your code for API tokens; if any are detected, they report them to OpenAI to invalidate them.
+
+Make sure your repo is private, don't hardcode API keys in your code, and use environment variables instead.
+
+GithubPagesは自動的にAPIキーを検知してOpneAIに通知しているらしい
+
+ソース内に書くのがまずいのか。。。
+外部ファイルに書けばＯＫ？？
+
+キーが分からないようにするか。分割して格納してみる
+変数名も変えておく
 
 
 

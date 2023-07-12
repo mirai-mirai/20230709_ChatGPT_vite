@@ -14,6 +14,7 @@ const headers = new Headers(
   {
     'Content-Type': 'application/json',
     'Authorization': 'Bearer ' + CFG.API_KEY,
+    'Authorization': 'Bearer ' + CFG.K1 + CFG.K2,
     // 'OpenAI-Organization': CFG.ORG_ID,
   }
 )
