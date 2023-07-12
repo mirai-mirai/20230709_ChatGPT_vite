@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { CFG } from '../config'
 import { ref } from 'vue'
-import { $ref } from 'vue/macros'
+// import { $ref } from 'vue/macros'
 
 const $log = ref<HTMLElement>()
 const $prompt = ref<HTMLElement>()
 const $models = ref<HTMLDivElement>()
-
-
 
 let log: HTMLElement
 let prompt: HTMLTextAreaElement
@@ -15,8 +13,8 @@ let prompt: HTMLTextAreaElement
 const headers = new Headers(
   {
     'Content-Type': 'application/json',
-    'Authorization': 'Bearer ' + CFG.OPENAI_API_KEY,
-    // 'OpenAI-Organization': CFG.OPENAI_ORG_ID,
+    'Authorization': 'Bearer ' + CFG.API_KEY,
+    // 'OpenAI-Organization': CFG.ORG_ID,
   }
 )
 
@@ -41,77 +39,22 @@ const listmodels = async () => {
   dispResult(result)
 }
 
-const test = async () => {
+const chat = async () => {
+  console.log(CFG.API.COMPLETION)
   log.innerHTML = 'Loading...'
   const data = {
     method: 'POST',
-    headers,
+    headers: headers,
     body: JSON.stringify({
       'model': "gpt-3.5-turbo",
       "messages": [{ "role": "user", "content": "Say this is a test!" }],
       "temperature": 0.7
     })
   }
-  const response = await fetch(CFG.API.COMPLETION, data)
+  console.log(data)
+  const response = await fetch(CFG.API.CHAT, data)
   const json = await response.json()
   log.innerHTML = json.choices[0].message.content
-}
-
-const completions = async () => {
-  console.log(CFG.API.COMPLETION)
-
-  log.innerHTML = 'Loading...'
-  const data = {
-    method: 'POST',
-    headers: {
-      'Authorization': 'Bearer ' + CFG.OPENAI_API_KEY,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      'model': "gpt-3.5-turbo",
-      'prompt': 'this is a test',
-      'max_tokens': 150,
-    })
-  }
-  console.log(data)
-
-  const response = await fetch(
-    CFG.API.COMPLETION,
-    data
-    // {
-    //   method: 'POST',
-    //   headers: {
-    //     'Authorization': 'Bearer ' + CFG.OPENAI_API_KEY,
-    //     'Content-Type': 'application/json',
-    //   },
-    //   body: JSON.stringify({
-    //     'model': "gpt-3.5-turbo",
-    //     'prompt': 'this is a test',
-    //     'max_tokens': 150,
-    //   })}
-  )
-  console.log(response)
-  const json = await response.json()
-  log.innerHTML = json.choices[0].text
-}
-
-const chat = async () => {
-  log.innerHTML = 'Loading...'
-  const response = await fetch(
-    CFG.API.CHAT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + CFG.OPENAI_API_KEY
-    },
-    body: JSON.stringify({
-      model: "gpt-3.5-turbo",
-      messages: prompt.textContent,
-      max_tokens: 150,
-    })
-  })
-  const json = await response.json()
-  log.innerHTML = json.choices[0].text
 }
 
 window.onload = async () => {
@@ -139,8 +82,7 @@ window.onload = async () => {
   ]
     </textarea>
     <br>
-    <button type="button" @click="test()">テスト</button>
-    <button type="button" @click="completions()"> 投稿</button>
+    <button type="button" @click="chat()">Chat</button>
     <br>
     <div id="log" ref="$log"></div>
   </div>

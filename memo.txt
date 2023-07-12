@@ -182,6 +182,78 @@ vite.env.tsは何をしている？？
 
 pushしてみる
 
+動いたけどエラー
+
+Failed to load resource: the server responded with a status of 401 (Unauthorized)
+
+リクエストの可視化をしてみるか？？
+
+そもそもローカルで動いてるか確認
+やっぱりそもそも動いてなかった
+
+もしかしてキーが切れてる？？？
+
+キーには寿命があるのか？？
+キーが消えてる！！！
+
+24時間後には消えるとか？？
+
+再度作ったら動いた
+
+でもtestが動かない
+
+ChatGPT.vue:55     POST https://api.openai.com/v1/completions 400 (Bad Request)
+
+何が悪い？？
+
+const test = async () => {
+  log.innerHTML = 'Loading...'
+  const data = {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      'model': "gpt-3.5-turbo",
+      "messages": [{ "role": "user", "content": "Say this is a test!" }],
+      "temperature": 0.7
+    })
+  }
+  const response = await fetch(CFG.API.COMPLETION, data)
+  const json = await response.json()
+  log.innerHTML = json.choices[0].message.content
+}
+
+
+const headers = new Headers(
+  {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + CFG.API_KEY,
+    // 'OpenAI-Organization': CFG.ORG_ID,
+  }
+)
+
+何が悪いか分からない。。。
+昨日は動いてた？？？
+
+何を変えた？？
+
+やっぱソース管理が必要かも
+
+何で昨日は動いてた？？？
+
+くそ！！！！！
+
+APIの接続先を変えたか？？
+
+もう一度仕様を確認
+
+一番お勧めされているChatで試してみる
+
+上手くいった！！！
+
+デプロイしてみる
+
+
+
 
 
 refの書き方も後で試す
