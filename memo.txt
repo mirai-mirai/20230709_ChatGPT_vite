@@ -1,0 +1,189 @@
+vite1のみでChatGPTをやってみる
+
+うまくFetchできるか？？
+
+npx create-vite 20230709_ChatGPT_vite
+
+ボタンを押したらFetchするようにするか
+
+いや自動でやる方が楽
+
+dotenvはNode環境じゃないと使えない
+
+仕方ないからconfig.tsを作ってインポートする
+
+
+// Keyが全てstringであることを指定しておく
+interface CFG { [key: string]: any }
+
+export const CFG: CFG = {
+  OPENAI_API_KEY: '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',
+  OPENAI_ORG_ID: 'org-k42yoMTxV4ogAL4ztJyniOxB',
+  OPENAI_API_ENDPOINT: 'https://api.openai.com/v1/engines/davinci/completions'
+}
+
+import { CFG } from '../config'
+
+意外と楽勝で動いた
+
+何か回答がおかしい
+
+人生の意味とは何でしょうか
+
+エラーで返ってこなくなった
+
+たぶんcors問題だと思う。
+
+Response {type: 'cors', url: 'https://api.openai.com/v1/models', redirected: false, status: 405, ok: false, …}
+body
+: 
+(...)
+bodyUsed
+: 
+false
+headers
+: 
+Headers {}
+ok
+: 
+false
+redirected
+: 
+false
+status
+: 
+405
+statusText
+: 
+""
+type
+: 
+"cors"
+url
+: 
+"https://api.openai.com/v1/models"
+[[Prototype]]
+: 
+Response
+
+Node.jsでプロキシすればうまくいくとは思う
+
+でも面倒だからサービスワーカー経由で通信して回避できないか？？
+
+サーバーレスのcors回避方法を検証する
+
+
+Node.jsで動かしたときは、openaiパッケージがうまく処理してくれてた
+
+もしかして、組織IDも必要だった？？
+試してみる
+
+やっぱりだめだ。。。
+
+Content-Typeが余分だった？？
+
+はずしてもだめだった
+
+POSTがだめ？？
+GETにしてみる
+200　OK　返ってきた！！！
+
+ヘッダーもまとめて書いておくと楽
+
+const headers = new Headers(
+  {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + CFG.OPENAI_API_KEY,
+    'OpenAI-Organization': CFG.OPENAI_ORG_ID,
+  }
+)
+
+他のAPIも試してみるか
+
+completionsで試してみる
+
+404エラー
+存在しないページ？？？？
+
+
+ヘッダーは組織IDも足してある
+URLを再度確認する
+
+Chatを使えということか
+
+組織IDが余分だった？？
+
+https://platform.openai.com/docs/api-reference/making-requests
+ここのサンプルに厳密に従って試してみる
+
+リクエスト
+curl https://api.openai.com/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -d '{
+     "model": "gpt-3.5-turbo",
+     "messages": [{"role": "user", "content": "Say this is a test!"}],
+     "temperature": 0.7
+   }'
+
+
+OK返ってきた！！！
+
+うまくいった！！
+
+github Pagesで表示できるか確認しておく
+
+まずはビルドして、ソースパスを設定する
+
+npm run buildしてみる
+
+エラー　型指定が抜けてた
+
+function foo({ a, b }: { a: number; b: number }) {}
+結構面倒な書き方
+
+ビルドは成功
+
+distフォルダに格納された
+
+assetsに分かれて格納されてる
+
+ここをdocsに保存するように変更する
+そしてdocsもデプロイするようにする
+githubの設定でdocs上でコンテンツ表示させる
+
+以下を参考にする
+export default defineConfig({
+  // github pagesの変な仕様（ルートが１つ上）に対応する
+  base: '/20230709_ChatGPT_vite/',
+  // assetsInclude: ["**/*.bin", "**/*.json"],
+  plugins: [vue()],
+  build: {
+    // minify: 'terser',
+    // terserOptions: { format: { comments: false } },
+    outDir: 'docs', // ビルド出力先を変更
+    rollupOptions: {
+      output: {
+        assetFileNames: '[name]-[hash][extname]',
+        chunkFileNames: '[name]-[hash].js', // JSをルートに出力
+        entryFileNames: '[name]-[hash].js', // JSをルートに出力
+      },
+    },
+  },
+})
+
+再度ビルドする
+
+ちゃんとdocsの下に出るようになった。
+
+vite.svgのゴミが残ってる
+
+vite.env.tsは何をしている？？
+
+pushしてみる
+
+
+
+refの書き方も後で試す
+import { $ref } from 'vue/macros'
+これでいける？？
