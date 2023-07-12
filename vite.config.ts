@@ -5,7 +5,8 @@ export default defineConfig({
   // github pagesの変な仕様（ルートが１つ上）に対応する
   base: '/20230709_ChatGPT_vite/',
   // assetsInclude: ["**/*.bin", "**/*.json"],
-  plugins: [vue()],
+  // plugins: [vue()],
+  plugins: [vue({ reactivityTransform: true })],
   build: {
     // minify: 'terser',
     // terserOptions: { format: { comments: false } },

@@ -271,8 +271,47 @@ GithubPagesは自動的にAPIキーを検知してOpneAIに通知しているら
 
 デプロイして実験してみる
 
+いまのところ動いてる
+そのうち消される？？？
+
+2023 7/12 11:02時点はOK
+2023 7/12 11:31時点はOK
+分割したから消されてない？？？
 
 
 refの書き方も後で試す
 import { $ref } from 'vue/macros'
 これでいける？？
+
+ChatGPT.vue:4 Uncaught SyntaxError: The requested module '/20230709_ChatGPT_vite/node_modules/.vite/deps/vue_macros.js?v=319ec40
+
+エラー出た
+
+これらのマクロは Reactivity Transform が有効であればグローバルに利用可能でインポート不要ですが、より明示的にしたい場合は任意で vue/macros からインポートできます:
+
+やっぱり機能を有効化しないといけないらしい
+
+どう考えても$refの方が便利なはず！！！！
+
+設定を変更する：
+// vite.config.js
+export default {
+  plugins: [vue({ reactivityTransform: true })],
+}
+
+動いた！！！
+
+いまとなっては非推奨となってしまった。やっぱりコストの方が高かった。危険ということか。やっぱり使わないでおこう。
+As many of you are already aware, we are officially dropping this RFC with consensus from the team.
+
+ということで、設定は元に戻す。コードも戻す。
+
+
+Chatのプロンプトを動的に指定してみる
+
+api.openai.com/v1/chat/completions:1     Failed to load resource: the server responded with a status of 400 (Bad Request)
+
+
+メッセージがNullになってる
+
+{"model":"gpt-3.5-turbo","messages":"","temperature":0.7}
