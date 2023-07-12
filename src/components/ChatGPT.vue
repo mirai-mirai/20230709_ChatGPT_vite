@@ -13,7 +13,6 @@ let prompt: HTMLTextAreaElement
 const headers = new Headers(
   {
     'Content-Type': 'application/json',
-    'Authorization': 'Bearer ' + CFG.API_KEY,
     'Authorization': 'Bearer ' + CFG.K1 + CFG.K2,
     // 'OpenAI-Organization': CFG.ORG_ID,
   }
@@ -59,6 +58,7 @@ const chat = async () => {
 }
 
 window.onload = async () => {
+  console.log('onload')
   log = $log.value as HTMLElement
   prompt = $prompt.value as HTMLTextAreaElement
 }
@@ -67,33 +67,35 @@ window.onload = async () => {
 
 <template>
   <div>
+    <h1 id="title">== ChatGPT PoC == </h1>
+    <h3 id="author">T.Shiozaki 2023/7/12</h3>
     <button type="button" @click="listmodels()">OPENAI モデル一覧取得</button>
     <div id="models" ref="$models"></div>
-    <H1>ChatGPT sandbox</H1>
-    <textarea id="prompt" ref="$prompt">
-      [
-   {
-    "role": "system",
-    "content": "You are a helpful assistant."
-   },
-   {
-    "role": "user",
-    "content": "Hello!"
-   }
-  ]
-    </textarea>
     <br>
-    <button type="button" @click="chat()">Chat</button>
+    <button type="button" @click="chat()">Chat</button><br>
+    <textarea id="prompt" ref="$prompt">    </textarea>
+    <br>
     <br>
     <div id="log" ref="$log"></div>
   </div>
 </template>
 
 <style scoped>
+#title {
+  margin-bottom: 0px;
+}
+
+#author {
+  text-align: right;
+  margin: 0px 0px 20px 200px;
+  color: #35495e;
+}
+
 #models {
   display: flexbox;
-  width: 80%;
-  height: 300px;
+  width: 100%;
+  height: auto;
+  margin: 10px 0px 10px 0px;
 }
 
 #prompt {
