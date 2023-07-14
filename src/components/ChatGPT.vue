@@ -207,8 +207,111 @@ const haiku = async () => {
   dispResult(json.choices[0].message.content)
 }
 
-window.onload = async () => {
-  console.log('onload')
+// 画像作成
+const $imgGenQ = ref<HTMLElement>()
+const $imgGenA = ref<HTMLElement>()
+const $imgGenR = ref<HTMLImageElement>()
+const imgGen = async () => {
+  console.clear()
+  const dispResult = (res: string) => {
+    ($imgGenA.value as HTMLDivElement).innerHTML = res
+  }
+  dispResult('Loading...')
+
+  const prompt = ($imgGenQ.value as HTMLTextAreaElement).value
+
+  const body = JSON.stringify(
+    {
+      prompt,
+      size: '256x256',
+      response_format: "url"
+    })
+
+  console.log(body)
+
+  const response = await fetch(
+    CFG.API.IMG_GEN,
+    {
+      method: 'POST',
+      headers,
+      body
+    })
+  const json = await response.json()
+  dispResult('Received')
+  $imgGenR.value!.src = json.data[0].url
+
+}
+
+// 画像編集
+const $imgEditQ = ref<HTMLElement>()
+const $imgEditA = ref<HTMLElement>()
+const $imgEditOut = ref<HTMLImageElement>()
+const $imgEditIn = ref<HTMLImageElement>()
+const $imgEditFile = ref<HTMLInputElement>()
+let blobUploaded: string
+let PNG: string
+let file: File
+
+const uploadImg = () => {
+  file = $imgEditFile.value!.files![0]
+  if (blobUploaded) URL.revokeObjectURL(blobUploaded)
+  blobUploaded = URL.createObjectURL(file)
+  const $img = $imgEditIn.value as HTMLImageElement
+  $img.src = blobUploaded
+  $img.onload = async () => {
+    console.log('image loaded')
+    const imgUp = await createImageBitmap($imgEditIn.value!)
+    const canvas = document.createElement('canvas')
+    const { width, height } = imgUp
+    console.log(`size: ${width}x${height}`)
+    const squareSize = Math.max(width, height)
+    canvas.width = squareSize
+    canvas.height = squareSize
+    const ctx = canvas.getContext('2d')
+    ctx!.drawImage(imgUp, 0, 0)
+    // const data: ImageData = ctx!.getImageData(0, 0, squareSize, squareSize)
+    // console.log(data)
+
+    PNG = canvas.toDataURL("image/png");
+    // PNG = PNG.replace(/^data:image\/(png);base64,/, "");
+    // console.log(PNG)
+  }
+}
+
+const imgEdit = async () => {
+  console.clear()
+  const dispResult = (res: string) => { $imgEditA.value!.innerHTML = res }
+  dispResult('Loading...')
+
+  const prompt = ($imgEditQ.value as HTMLTextAreaElement).value
+  const body = new FormData();
+  body.append('image', file);
+  body.append('prompt', prompt);
+  body.append('size', '256x256');
+  body.append('response_format', 'url');
+  // console.log(body.get('image'))
+  // const body = JSON.stringify(body)
+  // console.log(body)
+
+  // const body = JSON.stringify(
+  //   {
+  //     image: PNG,
+  //     prompt,
+  //     size: '256x256',
+  //     response_format: "url"
+  //   })
+  // console.log(body)
+  const headers = new Headers({ 'Authorization': 'Bearer ' + CFG.K1 + CFG.K2 })
+  const response = await fetch(
+    CFG.API.IMG_EDIT,
+    {
+      method: 'POST',
+      headers,
+      body
+    })
+  const json = await response.json()
+  dispResult('Received')
+  $imgEditOut.value!.src = json.data[0].url
 
 }
 
@@ -221,23 +324,54 @@ window.onload = async () => {
     <h3 id="author">T.Shiozaki 2023/7/12</h3>
 
     <!-- モデル一覧 -->
-    <button type="button" @click="listmodels()">OPENAI モデル一覧取得</button>
-    <div id="models" ref="$models"></div>
+    <div class="card">
+      <button type="button" @click="listmodels()">OPENAI モデル一覧取得</button>
+      <div class="answer" ref="$models"></div>
+    </div>
 
     <!-- 突っ込んで -->
-    <button type="button" @click="tukkomi()">突っ込んで</button><br>
-    <textarea class="question" ref="$tukkomiQ">この帽子どいつんだ？オランダ</textarea>
-    <div class="answer" ref="$tukkomiA"></div>
+    <div class="card">
+      <textarea class="question" ref="$tukkomiQ">この帽子どいつんだ？オランダ</textarea>
+      <br>
+      <button type="button" @click="tukkomi()">突っ込んで</button><br>
+      <div class="answer" ref="$tukkomiA"></div>
+    </div>
 
     <!-- ぼけて -->
-    <button type="button" @click="bokete()">ぼけて</button><br>
-    <textarea class="question" ref="$bokeQ">最高にかっこいい排便の仕方は？</textarea>
-    <div class="answer" ref="$bokeA"></div>
+    <div class="card">
+      <textarea class="question" ref="$bokeQ">最高にかっこいい排便の仕方は？</textarea>
+      <br>
+      <button type="button" @click="bokete()">ぼけて</button><br>
+      <div class="answer" ref="$bokeA"></div>
+    </div>
 
     <!-- 俳句 -->
-    <button type="button" @click="haiku()">俳句作って</button><br>
-    <textarea class="question" ref="$haikuQ">夏の日は</textarea>
-    <div class="answer" ref="$haikuA"></div>
+    <div class="card">
+      <textarea class="question" ref="$haikuQ">夏の日は</textarea>
+      <br>
+      <button type="button" @click="haiku()">俳句作って</button><br>
+      <div class="answer" ref="$haikuA"></div>
+    </div>
+
+    <!-- 画像生成 -->
+    <div class="card">
+      <textarea class="question" ref="$imgGenQ">花</textarea>
+      <br>
+      <button type="button" @click="imgGen()">画像生成</button><br>
+      <div class="answer" ref="$imgGenA"> </div>
+      <img class="imgResult" ref="$imgGenR" /><br>
+    </div>
+
+    <!-- 画像編集 -->
+    <div class="card">
+      <input type="file" ref="$imgEditFile" accept="image/*" @change="uploadImg" />
+      <img class="imgResult" ref="$imgEditIn" />
+      <textarea class="question" ref="$imgEditQ">A cute baby sea otter wearing a beret</textarea>
+      <br>
+      <button type="button" @click="imgEdit()">画像編集</button><br>
+      <div class="answer" ref="$imgEditA"> </div>
+      <img class="imgResult" ref="$imgEditOut" />
+    </div>
 
   </div>
 </template>
@@ -253,15 +387,18 @@ window.onload = async () => {
   color: #35495e;
 }
 
-#models {
+.card {
+  background-color: #f4f4f4;
   display: flexbox;
-  width: 100%;
+  width: auto;
   height: auto;
-  margin: 10px 0px 10px 0px;
+  margin: 10px 0px 20px 0px;
+  padding: 5px 10px 10px 10px;
+  box-shadow: #d7d7d7 0px 5px 5px 0px;
 }
 
 button {
-  width: auto;
+  width: 200px;
   margin: 10px 0px 10px 0px;
 }
 
@@ -275,5 +412,11 @@ button {
   display: flexbox;
   width: 80%;
   height: auto;
+}
+
+.imgResult {
+  width: 256px;
+  height: auto;
+  margin: 10px 0px 10px 0px;
 }
 </style>

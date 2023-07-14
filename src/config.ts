@@ -9,7 +9,11 @@ export const CFG: CFG = {
   API: {
     MODELS: 'https://api.openai.com/v1/models',
     CHAT: 'https://api.openai.com/v1/chat/completions',
-    COMPLETION: 'https://api.openai.com/v1/completions',
-    ENDPOINT: 'https://api.openai.com/v1/engines/davinci/completions',
+    IMG_GEN: 'https://api.openai.com/v1/images/generations',
+    IMG_EDIT: 'https://api.openai.com/v1/images/edits',
+    IMG_VAR: 'https://api.openai.com/v1/images/varitations',
+    AUDIO_TRANSCRIPT: 'https://api.openai.com/v1/audio/transcriptions',
+    AUDIO_TRANSLATION: 'https://api.openai.com/v1/audio/transcriptions',
+    MODERATIONS: 'https://api.openai.com/v1/moderations',
   }
 }

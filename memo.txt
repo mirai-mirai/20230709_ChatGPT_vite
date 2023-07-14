@@ -315,3 +315,277 @@ api.openai.com/v1/chat/completions:1     Failed to load resource: the server res
 メッセージがNullになってる
 
 {"model":"gpt-3.5-turbo","messages":"","temperature":0.7}
+
+
+動いてる
+
+
+料金：
+
+GPT3.5　Model	Input	Output
+4K context	$0.0015 / 1K tokens	$0.002 / 1K tokens
+16K context	$0.003 / 1K tokens	$0.004 / 1K tokens
+
+
+https://platform.openai.com/docs/deprecations/
+
+InstructGPT models
+SHUTDOWN DATE	MODEL	PRICE	RECOMMENDED REPLACEMENT
+2024-01-04	text-ada-001	$0.0004 / 1K tokens	gpt-3.5-turbo-instruct
+2024-01-04	text-babbage-001	$0.0005 / 1K tokens	gpt-3.5-turbo-instruct
+2024-01-04	text-curie-001	$0.0020 / 1K tokens	gpt-3.5-turbo-instruct
+2024-01-04	text-davinci-001	$0.0200 / 1K tokens	gpt-3.5-turbo-instruct
+2024-01-04	text-davinci-002	$0.0200 / 1K tokens	gpt-3.5-turbo-instruct
+2024-01-04	text-davinci-003	$0.0200 / 1K tokens	gpt-3.5-turbo-instruct
+Note: The recommended replacement, gpt-3.5-turbo-instruct, has not yet launched. Impacted customers will be notified by email when it becomes available.
+
+Base GPT models
+SHUTDOWN DATE	MODEL	PRICE	RECOMMENDED REPLACEMENT
+2024-01-04	ada	$0.0004 / 1K tokens	ada-002
+2024-01-04	babbage	$0.0005 / 1K tokens	babbage-002
+2024-01-04	curie	$0.0020 / 1K tokens	curie-002
+2024-01-04	davinci	$0.0200 / 1K tokens	davinci-002
+2024-01-04	code-davinci-002	free to researchers	gpt-3.5-turbo-base
+
+画像生成は成功
+画像URLが戻るのでそれをimg.srcに設定するだけ
+
+画像編集に取り組む
+
+ファイル指定はできたが、画像が表示できない
+
+const uploadImg = () => {
+  console.log($imgEditFile.value)
+}
+<input type="file" ref="$imgEditFile" accept=".jpg, .png" @click="uploadImg()">
+
+URLに変換が必要らしい
+var blobUrl = window.URL.createObjectURL( fileList[i] ) ;
+
+エラー発生：
+runtime-core.esm-bundler.js:221 Uncaught TypeError: Failed to execute 'createObjectURL' on 'URL': Overload resolution failed.
+
+
+下記で成功：
+const uploadImg = () => {
+  const file: File = $imgEditFile.value!.files![0]
+  const blob = URL.createObjectURL(file)
+  $imgEditIn.value!.src = blob
+}
+<input type="file" ref="$imgEditFile" accept="image/*" @change="uploadImg">
+
+
+imgタグの画像からビットマップを取得、パディング、PNG化
+
+const uploadImg = () => {
+  const file: File = $imgEditFile.value!.files![0]
+  if (blob) URL.revokeObjectURL(blob)
+  blob = URL.createObjectURL(file)
+  const $img = $imgEditIn.value as HTMLImageElement
+  $img.src = blob
+  $img.onload = async () => {
+    console.log('image loaded')
+    const img = await createImageBitmap($imgEditIn.value!)
+    const canvas = document.createElement('canvas')
+    canvas.width = img.width
+    canvas.height = img.height
+    const ctx = canvas.getContext('2d')
+    ctx!.drawImage(img, 0, 0)
+    const data: ImageData = ctx!.getImageData(0, 0, img.width, img.height)
+    console.log(data)
+    const squareImage = (data: ImageData) => {
+      const { width, height } = data
+      const canvas = document.createElement('canvas')
+      const squareSize = Math.max(width, height)
+      canvas.width = squareSize
+      canvas.height = squareSize
+      const ctx = canvas.getContext('2d')
+      ctx!.putImageData(data, 0, 0)
+      canvas.toBlob(blob => {
+        PNG = blob!
+        console.log()
+      }, 'image/png')
+      // return ctx!.getImageData(0, 0, squareSize, squareSize)
+    }
+    squareImage(data)
+  }
+}
+
+サーバ送信でエラー
+{"image":"[object Blob]","prompt":"A cute baby sea otter wearing a beret","size":"256x256","response_format":"url"}
+うまくJSONにできてない
+
+まずはテキストとして表示することを考えるか
+
+
+promise blob.text()ではだめなのか？
+
+パディング部分はもう少しすっきりとかけるかも
+canvasに２回コピーする処理は無駄に見える
+
+結局canvas.toBlob()で変換しても、最後にcreateObjectURLは
+blob:http://localhost:5173/2476ae75-2d5d-4c6e-8593-494873094993
+とローカルホストのURLを返すだけ
+
+同一マシン内でのメモリ共有が前提になっている
+
+独立した文字列に変換する必要がある
+
+Blobをテキストとして読み込む
+const blob2txt blob => {
+  const fileReader = new FileReader();
+
+  return new Promise((resolve, reject) => {
+    fileReader.onerror = () => {
+      fileReader.abort();
+      reject();
+    };
+
+    fileReader.onload = () => {
+      resolve(fileReader.result);
+    };
+
+    fileReader.readAsText(blob);
+  });
+};
+
+文字列への変換はできたけど、文字化けしてる？？
+エンコードが必要？？
+
+{"image":"�PNG\r\n\u001a\n\u0000\u0000\u0000\rIHDR\u0000\u0000\u0004\u0001\u0000\u0000\u0004\u0001\b\u0006\u0000\u0000\u0000[��\u0018\u0000\u0000\u0000\u0
+
+blog.text()で試してみるか
+⇒全く同じ結果やった
+
+わざわざblob2txtとか作らなくてもblob.text()で文字列への変換はできる
+
+fileReader.readAsDataURL(blob);
+こっちを使ってみるか　base64で返してくれるらしい
+
+ただ、注意が書いてある
+
+メモ: blob の result は、先に Base64 でエンコードされたデータの前にある Data-URL の宣言を削除しておかないと、直接 Base64 としてデコードすることができません。 Base64 でエンコードされた文字列のみを受け取る場合は、先に結果から data:*/*;base64, を削除しておく必要があります。
+
+data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAyAAAAMgCAYAAADbcAZoAAAAAXNSR0IArs4c6QAAIABJREFUeF7svQmT5DqOJgj57RGRd76rXvd0247t//81O9szs9tdXVX9jjzj9FvSGEDRQy4XBZ46PBhmaZkZ4gGCIIiPIIjk0x9fc3D5SRKX2tZ187ye7MQXPUnG0IbfRwD5CAC64YEg0G36TCZA8ryOx9X50J2HcYl8bCNjWGky2jINKvrq5Kipngm/dMpi/ypeNX3TabuNMnUyIcejWqMqukzLy3Zkf9V+bdtrg2/afXB6iPRPf35Med6kU/ozqkLT1uw5eaGvEoVi6nJnkPzzsVdmiv22b3NkSo+pvJq277u87j6rPS5Ov/geQEN72jR7oMl2jzrrOh8LK+xsfQiFoFr/SaEwQo9Z6idOF3hg6TlrNHRGEgGIgvXswowApMw5X
+
+うまくいったか？？ヘッダはそのままでよい？？
+
+ChatGPT.vue:323     POST https://api.openai.com/v1/images/edits 415 (Unsupported Media Type)
+
+メディアタイプがうまく読めてない？？？
+
+PNG.substring(22)で先頭の文字列を削除してみる
+
+{"image":"iVBORw0KGgoAAAANSUhEUgAAAyAAAAMgCA
+うまくいった
+
+ChatGPT.vue:324     POST https://api.openai.com/v1/images/edits 415 (Unsupported Media Type)
+
+うまくメディアが認識されてない
+
+画像の条件：
+The image to edit. Must be a valid PNG file, less than 4MB, and square. If mask is not provided, image must have transparency, which will be used as the mask.
+
+サイズを小さくしないといけない？？
+
+サイズを確認してみる
+
+bicycle.jpg: 1358156 1.3MB
+banana.jpg: 596616  600kb
+
+全然小さい。。。
+
+画像サイズをCSSで指定しないで、元の大きさにしてみる
+パディングした画像を別のimgタグに出してみる
+
+こういうやり方もある
+const formData=new FormData()
+formData.append('prompt',prompt)
+formData.append('image',image)
+
+await fetch(URL,{method:'PUT',body:formData})
+
+これで透明部分のある正方形のPNGを渡してみるか
+
+このやり方の方がシンプル？？
+
+const dataURL = canvas.toDataURL("image/png");
+return dataURL.replace(/^data:image\/(png);base64,/, "");
+
+実は同じことやってる？？
+同じやった。。。。
+
+完全に正方形256x256で透明部分のあるPNGを作ってアップしてみる
+
+https://api.openai.com/v1/images/edits 415 (Unsupported Media Type)
+同じエラー。。。
+
+ヘッダーを消したらだめってこと？？
+
+消さずに試してみる
+
+{"image":"data:image/png;base64,iVBO
+ちゃんとヘッダーも出てる
+
+https://api.openai.com/v1/images/edits 415 (Unsupported Media Type)
+
+同じエラー。。。まじでくそAPI
+
+formDataを試すしかないか。
+
+ChatGPT.vue:304     POST https://api.openai.com/v1/images/edits 415 (Unsupported Media Type)
+
+やっぱり同じ　ちゃんと送られてない？？？
+
+やっぱりJSON.stringifyを通さないとだめ？？？
+
+const body = JSON.stringify(formData)
+なぜか空っぽになる。。。
+
+fetchに直接渡す必要がある？？ bodyの値として渡してはいけない？？
+
+const body = new FormData()
+body.append('data1', 'value1')
+body.append('data2', 'value2')
+const response = fetch('/path', {
+  method: 'POST',
+  body,
+})
+
+いやそんなことないか。。。
+
+fetch で multipart/form-data を送る時は Content-Type を指定してはいけない。
+
+でも、ヘッダではapplication/jsonを指定している
+
+Content-type: application/json
+を指定しているからには、完全にJSON形式にする必要があるのか
+ということは、PNG画像ファイルは完全にJSON形式で送る必要がある
+
+試しにヘッダーのContent-Typeを外してみるか。
+
+うまくいった！！！
+
+そもそもこのヘッダーは要らないのか？？？
+ここだけなのか？？？
+
+そもそも無くても他のも動いてるっぽい
+じゃぁ無くて良いじゃん
+
+突っ込んでではエラーになった。
+ChatGPT.vue:77     POST https://api.openai.com/v1/chat/completions 400 (Bad Request)
+やっぱり必要か。
+
+元に戻して再度試す。
+
+ちゃんと動いた。あ、そうか。こっちは完全にJSONで送っているからか。
+じゃぁ、画像編集のときだけヘッダを操作すればよいか。
+
+画像編集のときだけヘッダを作り直す
+成功！！！！
+
+バナナ画像ではうまくいかない
+POST https://api.openai.com/v1/images/edits 400 (Bad Request)
+
+いっかいコードをコミットする
+
