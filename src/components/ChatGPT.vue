@@ -249,8 +249,9 @@ const $imgEditOut = ref<HTMLImageElement>()
 const $imgEditIn = ref<HTMLImageElement>()
 const $imgEditFile = ref<HTMLInputElement>()
 let blobUploaded: string
-let PNG: string
 let file: File
+let dataURL: string
+let imgBLob: Blob
 
 const uploadImg = () => {
   file = $imgEditFile.value!.files![0]
@@ -258,24 +259,6 @@ const uploadImg = () => {
   blobUploaded = URL.createObjectURL(file)
   const $img = $imgEditIn.value as HTMLImageElement
   $img.src = blobUploaded
-  $img.onload = async () => {
-    console.log('image loaded')
-    const imgUp = await createImageBitmap($imgEditIn.value!)
-    const canvas = document.createElement('canvas')
-    const { width, height } = imgUp
-    console.log(`size: ${width}x${height}`)
-    const squareSize = Math.max(width, height)
-    canvas.width = squareSize
-    canvas.height = squareSize
-    const ctx = canvas.getContext('2d')
-    ctx!.drawImage(imgUp, 0, 0)
-    // const data: ImageData = ctx!.getImageData(0, 0, squareSize, squareSize)
-    // console.log(data)
-
-    PNG = canvas.toDataURL("image/png");
-    // PNG = PNG.replace(/^data:image\/(png);base64,/, "");
-    // console.log(PNG)
-  }
 }
 
 const imgEdit = async () => {
@@ -285,34 +268,47 @@ const imgEdit = async () => {
 
   const prompt = ($imgEditQ.value as HTMLTextAreaElement).value
   const body = new FormData();
-  body.append('image', file);
+  // body.append('image', file);
+  body.append('image', imgBLob);
+  // body.append('image', dataURL);
   body.append('prompt', prompt);
   body.append('size', '256x256');
+  // body.append('size', '512x512');
   body.append('response_format', 'url');
-  // console.log(body.get('image'))
-  // const body = JSON.stringify(body)
-  // console.log(body)
-
-  // const body = JSON.stringify(
-  //   {
-  //     image: PNG,
-  //     prompt,
-  //     size: '256x256',
-  //     response_format: "url"
-  //   })
-  // console.log(body)
   const headers = new Headers({ 'Authorization': 'Bearer ' + CFG.K1 + CFG.K2 })
   const response = await fetch(
-    CFG.API.IMG_EDIT,
-    {
-      method: 'POST',
-      headers,
-      body
-    })
+    CFG.API.IMG_EDIT, { method: 'POST', headers, body })
+  console.log(response)
   const json = await response.json()
   dispResult('Received')
   $imgEditOut.value!.src = json.data[0].url
+}
 
+window.onload = () => {
+  const $img = $imgEditIn.value as HTMLImageElement
+  $img.onload = async () => {
+    const resizeRatio = 256 / Math.max($img.width, $img.height)
+    console.log('image loaded')
+    const imgUp = await createImageBitmap($img, {
+      resizeWidth: $img.width * resizeRatio,
+      resizeHeight: $img.height * resizeRatio,
+      resizeQuality: 'high'
+    })
+    const canvas = document.createElement('canvas')
+    const { width, height } = imgUp
+    console.log(`size: ${width}x${height}`)
+    const squareSize = Math.max(width, height)
+    canvas.width = squareSize
+    canvas.height = squareSize
+    const ctx = canvas.getContext('2d')
+    ctx!.drawImage(imgUp, 0, 0)
+    // const data: ImageData = ctx!.getImageData(0, 0, squareSize, squareSize)
+    // dataURL = canvas.toDataURL('image/png')
+    canvas.toBlob((blob) => {
+      imgBLob = blob!
+      console.log(blob)
+    })
+  }
 }
 
 </script>
@@ -355,7 +351,7 @@ const imgEdit = async () => {
 
     <!-- 画像生成 -->
     <div class="card">
-      <textarea class="question" ref="$imgGenQ">花</textarea>
+      <textarea class="question" ref="$imgGenQ">KAMIKAZE fighter</textarea>
       <br>
       <button type="button" @click="imgGen()">画像生成</button><br>
       <div class="answer" ref="$imgGenA"> </div>
@@ -365,8 +361,13 @@ const imgEdit = async () => {
     <!-- 画像編集 -->
     <div class="card">
       <input type="file" ref="$imgEditFile" accept="image/*" @change="uploadImg" />
-      <img class="imgResult" ref="$imgEditIn" />
-      <textarea class="question" ref="$imgEditQ">A cute baby sea otter wearing a beret</textarea>
+      <br>
+      4MB以下の画像をアップロードしてください
+      <br>
+
+      <img class="imgUpload" ref="$imgEditIn" src="../assets/banana.png" />
+      <button type="button" @click="imgEdit()">マスクのクリア</button><br>
+      <textarea class="question" ref="$imgEditQ">some boys are walking around</textarea>
       <br>
       <button type="button" @click="imgEdit()">画像編集</button><br>
       <div class="answer" ref="$imgEditA"> </div>
@@ -414,8 +415,14 @@ button {
   height: auto;
 }
 
+.imgUpload {
+  width: auto;
+  max-height: 300px;
+  margin: 10px 0px 10px 0px;
+}
+
 .imgResult {
-  width: 256px;
+  width: auto;
   height: auto;
   margin: 10px 0px 10px 0px;
 }

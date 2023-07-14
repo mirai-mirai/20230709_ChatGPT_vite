@@ -589,3 +589,139 @@ POST https://api.openai.com/v1/images/edits 400 (Bad Request)
 
 いっかいコードをコミットする
 
+マスク画像をブラウザ上で指定できるようにしたい
+
+マスクはリクエスト画像と全く同じサイズ
+
+画像を小さくするようにしてみた
+
+やっぱりだめだ。。。
+透明部分が無いからか。
+
+自転車も同じ
+
+試しにGIMPで背景を透明にしたら成功
+だけど、少年が出てこない
+
+きれいにバナナ意外を透明にしたら成功
+
+やっぱりマスク機能は必要
+
+車で試す
+
+api.openai.com/v1/images/edits:1     Failed to load resource: the server responded with a status of 400
+
+よく考えたらキャンバスを送ってなかった
+ファイルをそのまま送ってるだけ
+リサイズできてない
+実はしなくても大丈夫？？
+キャンバスから送るにはどうしたら良い？？？
+
+Fileオブジェクトが空だからエラーになっていた。。。
+
+400x300のPNG画像で試してみる
+
+成功した！！
+別に正方形だけじゃないっぽい
+
+imgタグをformDataとして送ってみるか
+$imgEditFile.value
+
+formDataにcanvasをdataURLに変換して送ってみる
+ヘッダもつけたままで
+
+POST https://api.openai.com/v1/images/edits 400 (Bad Request)
+
+やっぱりだめだ。。。
+
+formDataで送るのはOKだけど、dataURLにするとエラーになる
+
+レスポンスを確認してみるか。
+そこに何か書いてるかも
+何が悪いのか
+
+Response {type: 'cors', url: 'https://api.openai.com/v1/images/edits', redirected: false, status: 400, ok: false, …}
+body
+: 
+(...)
+bodyUsed
+: 
+true
+headers
+: 
+Headers {}
+ok
+: 
+false
+redirected
+: 
+false
+status
+: 
+400
+statusText
+: 
+"Bad Request"
+type
+: 
+"cors"
+url
+: 
+"https://api.openai.com/v1/images/edits"
+[[Prototype]]
+: 
+Response
+
+原因不明。。。
+
+formDataで送る時をマネするか？？
+成功した人のやり方をマネするか
+
+キャンバスから送るやり方を見つけないとマスクを送れない
+
+images/editでは、ヘッダにコンテンツタイプは指定していない！！
+これってjsonで送らなくてもよいということ？？
+
+むしろjsonで送っちゃダメってことか。
+form-data  multipartで送らないといけないのかも
+
+キャンバスからPNGのファイルオブジェクトを作って、それをformに食わせるか
+
+canvas.toBlogでblobオブジェクトを取得してそれをformDataに加えて送信するか。
+
+formData.append(name, blob, fileName)
+これでファイル名を指定してblobとしてフォームに追加できるはず
+
+他のサンプル：
+// ファイルのような JavaScript オブジェクト
+const content = '<q id="a"><span id="b">hey!</span></q>'; // 新しいファイルの本体…
+const blob = new Blob([content], { type: "text/xml" });
+
+formData.append("webmasterfile", blob);
+
+blobからformData追加はできるっぽい
+
+
+canvas.toBlobでブロブにしてformDataに渡してみる
+
+うまくいった！！！
+
+まぁ、サイズ修正しなくても良いみたいだから、正方形にしなくてもよいか。
+
+マスクを指定するときにはキャンバスから作成するから役には立つ
+あと、大きい画像のときもサイズ修正できるメリットもある
+
+これなら、jpg画像でもいける？？
+
+jpgでもいけた！！！
+
+やっぱりマスクを指定しないとつまらない。。。
+
+黒マスクと白マスクを作るか。。
+黒、もしくは白い部分を透明にする
+
+マスク後の画像も横に出す？？
+半透明な赤で上にかぶせるか？？
+
+いったんコミットしておく
+
