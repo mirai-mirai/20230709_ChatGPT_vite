@@ -252,7 +252,7 @@ let blobUploaded: string
 let imgBLob: Blob
 
 const uploadImg = () => {
-  constfile = $imgEditFile.value!.files![0]
+  const file = $imgEditFile.value!.files![0]
   if (blobUploaded) URL.revokeObjectURL(blobUploaded)
   blobUploaded = URL.createObjectURL(file)
   $imgEditIn.value!.src = blobUploaded
