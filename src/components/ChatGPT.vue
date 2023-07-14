@@ -249,16 +249,13 @@ const $imgEditOut = ref<HTMLImageElement>()
 const $imgEditIn = ref<HTMLImageElement>()
 const $imgEditFile = ref<HTMLInputElement>()
 let blobUploaded: string
-let file: File
-let dataURL: string
 let imgBLob: Blob
 
 const uploadImg = () => {
-  file = $imgEditFile.value!.files![0]
+  constfile = $imgEditFile.value!.files![0]
   if (blobUploaded) URL.revokeObjectURL(blobUploaded)
   blobUploaded = URL.createObjectURL(file)
-  const $img = $imgEditIn.value as HTMLImageElement
-  $img.src = blobUploaded
+  $imgEditIn.value!.src = blobUploaded
 }
 
 const imgEdit = async () => {
@@ -268,12 +265,10 @@ const imgEdit = async () => {
 
   const prompt = ($imgEditQ.value as HTMLTextAreaElement).value
   const body = new FormData();
-  // body.append('image', file);
+  const imgSize = ['256x256', '512x512', '1024x1024']
   body.append('image', imgBLob);
-  // body.append('image', dataURL);
   body.append('prompt', prompt);
-  body.append('size', '256x256');
-  // body.append('size', '512x512');
+  body.append('size', imgSize[0]);
   body.append('response_format', 'url');
   const headers = new Headers({ 'Authorization': 'Bearer ' + CFG.K1 + CFG.K2 })
   const response = await fetch(
@@ -286,9 +281,9 @@ const imgEdit = async () => {
 
 window.onload = () => {
   const $img = $imgEditIn.value as HTMLImageElement
-  $img.onload = async () => {
+  const resizeImg = async () => {
+    console.log('resize image')
     const resizeRatio = 256 / Math.max($img.width, $img.height)
-    console.log('image loaded')
     const imgUp = await createImageBitmap($img, {
       resizeWidth: $img.width * resizeRatio,
       resizeHeight: $img.height * resizeRatio,
@@ -302,13 +297,11 @@ window.onload = () => {
     canvas.height = squareSize
     const ctx = canvas.getContext('2d')
     ctx!.drawImage(imgUp, 0, 0)
-    // const data: ImageData = ctx!.getImageData(0, 0, squareSize, squareSize)
-    // dataURL = canvas.toDataURL('image/png')
-    canvas.toBlob((blob) => {
-      imgBLob = blob!
-      console.log(blob)
-    })
+    canvas.toBlob((blob) => { imgBLob = blob! })
   }
+  $img.onload = resizeImg
+  resizeImg()
+
 }
 
 </script>
@@ -364,12 +357,11 @@ window.onload = () => {
       <br>
       4MB以下の画像をアップロードしてください
       <br>
-
       <img class="imgUpload" ref="$imgEditIn" src="../assets/banana.png" />
-      <button type="button" @click="imgEdit()">マスクのクリア</button><br>
-      <textarea class="question" ref="$imgEditQ">some boys are walking around</textarea>
+      <button type="button" @click="">マスクのクリア</button><br>
+      <textarea class="question" ref="$imgEditQ">an apple is placed around the banana</textarea>
       <br>
-      <button type="button" @click="imgEdit()">画像編集</button><br>
+      <button type="button" @click="imgEdit()">画像修正</button><br>
       <div class="answer" ref="$imgEditA"> </div>
       <img class="imgResult" ref="$imgEditOut" />
     </div>
