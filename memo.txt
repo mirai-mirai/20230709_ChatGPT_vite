@@ -729,3 +729,215 @@ jpgでもいけた！！！
 
 リターン押したら送信してほしい
 
+マスクを書けるようにしよう
+
+Canvasを用意しておく
+
+Imgタグの画像をキャンバスにコピーしておく
+
+Canvas上をマウスが通ると座標をとる
+
+クリックするとそこを透明にする
+
+できた
+
+  let isDrawing = false
+  $canvas.addEventListener('mousemove', (e: MouseEvent) => {
+    if (!isDrawing) return
+    const x = e.offsetX * $canvas.width / $canvas.clientWidth
+    const y = e.offsetY * $canvas.height / $canvas.clientHeight
+    const ctx = $canvas.getContext('2d')
+    const s = brushSize.value
+    ctx!.clearRect(x - s, y - s, s * 2, s * 2)
+  })
+  const mouseIn = () => { isDrawing = true; $canvas.style.cursor = 'crosshair' }
+  const mouseOut = () => { isDrawing = false; $canvas.style.cursor = 'default' }
+  $canvas.addEventListener('mousedown', mouseIn)
+  $canvas.addEventListener('mouseup', mouseOut)
+  $canvas.addEventListener('mouseout', mouseOut)
+
+他のページの画像をドロップできないか？？
+
+document.addEventListener('dragover', function(e){
+  e.preventDefault();
+  console.log('dragover');
+});
+
+document.addEventListener('drop', function(e){
+  e.preventDefault();
+  console.log('drop');
+});
+
+生成した画像をドロップしたい。。。
+
+ドロップはできたけど、画像補完でエラーになる
+
+ChatGPT.vue:273 Uncaught (in promise) DOMException: Failed to execute 'toBlob' on 'HTMLCanvasElement': Tainted canvases may not be exported.
+
+CORS問題か？？
+
+image.crossOrigin = "anonymous";
+を試してみる
+
+Access to image at 'https://oaidalleapiprodscus.blob.core.windows.net/private/org-k42yoMTxV4ogAL4ztJyniOxB/user-M2jfRJ0BSkgx9l3bIfYR1kZo/img-yrL82W6dzSL4xOElVxQX2bdc.png?st=2023-07-15T02%3A39%3A23Z&se=2023-07-15T04%3A39%3A23Z&sp=r&sv=2021-08-06&sr=b&rscd=inline&rsct=image/png&skoid=6aaadede-4fb3-4698-a8f6-684d7786b067&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2023-07-14T20%3A43%3A16Z&ske=2023-07-15T20%3A43%3A16Z&sks=b&skv=2021-08-06&sig=LJPw2wjU1nIfaW/cBFMzXtQxVpLrOAo8%2BUGhsqrND5Y%3D' from origin 'http://localhost:5173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+
+こんどはドロップのタイミングでエラー
+
+たぶんURLで取得したからオリジンが問題になる
+base64なら問題にならないはず
+まぁそこまでこだわることもないか。。
+
+"response_format": "b64_json"
+
+console.log(JSON.stringify(responseData));
+const image = responseData['data'][0]['b64_json']
+const imageData = "data:image/png;base64,"+image;
+this.el.setAttribute('material','src', 'url(' + imageData + ')');
+
+画像生成のところを変えてみるか？
+
+responseのbodyがReadbleStreamになっている
+
+const stream: ReadableStream = response.body!
+const res = await stream.getReader().read()
+で中身を見るとUint8Arrayになっているからここからb64文字列を作ってみる
+
+{done: false, value: Uint8Array(7812)}
+done
+: 
+false
+value
+: 
+Uint8Array(7812) [123, 10, 32, 32, 34, 99, 114, 101, 97, 116, 101, 100, 34, 58, 32, 49, 54, 56, 57, 51, 57, 55, 55, 51, 52, 44, 10, 32, 32, 34, 100, 97, 116, 97, 34, 58, 32, 91, 10, 32, 32, 32, 32, 123, 10, 32, 32, 32, 32, 32, 32, 34, 98, 54, 52, 95, 106, 115, 111, 110, 34, 58, 32, 34, 105, 86, 66, 79, 82, 119, 48, 75, 71, 103, 111, 65, 65, 65, 65, 78, 83, 85, 104, 69, 85, 103, 65, 65, 65, 81, 65, 65, 65, 65, 69, 65, 67, 65, 73, 65, …]
+[[Prototype]]
+: 
+Object
+
+以下で変換できる？？
+ // (from: https://stackoverflow.com/a/11562550/2885946)
+ function uint8ArrayToBase64(uint8Array) {
+   return btoa(String.fromCharCode(...uint8Array));
+ }
+
+ewogICJjcmVhdGVkIjogMTY4OTM5ODAxNSwKICAiZGF0YSI6IFsKICAgIHsKICAgICAgImI2NF9qc29uIjogImlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFRQUFBQUVBQ0FJQUFBRFRFRDh4QUFBQWFHVllTV1pOVFFBcUFBQUFDQUFDa253QUFnQUFBQ2tBQUFBbWtvWUFBZ0FBQUJnQUFBQlFBQUFBQUU5d1pXNUJTUzB0TUdZeVkyRTRPR0pqT1RBMFpqTTRORFkxWkRKaFptUXlNV1JpTVdJMVpXUUFBRTFoWkdVZ2QybDBhQ0JQY0dWdVFVa2dSRUZNVEMxRkFMaXZsWWNBQVFBQVNVUkJWSGdCQUN1QjFINEIvLzcrL3dBQkFRQUFBQUFBQUFIL0FBQUFBQUFCQUFBQUFBQUEvd0FBQVFEL0FBQUJBUC8vL3dFQUFRQUFBUDhCQUFEL0FBQUEvd0FBQUFBQUFBRC9BUUFBQUFBQS93QUFBUUFCL3dFQkFRRC9BQUFCQVA4QUFBQUFBQUgvQUFBQi93RC9BUUFCQUFBQUFBQUEvd0QvQUFBQS8vOEFBQUFBQUFFQS93QUFBQUFCQWYvL0FRRUJBQUFBQVA4QUFBRUFBUU
+
+それっぽいのが取れた
+
+下記でヘッダをつけてimgタグに指定してみる
+  const imageData = "data:image/png;base64," + b64;
+うまくいかなかった。。。
+7812バイトは小さすぎるか。。。
+
+  const b64 = btoa(String.fromCharCode.apply(null, res.value))
+変換がまずかった？？
+
+
+チャンクに分かれているっから、結合が必要だった。
+
+  reader.read().then(function processText({ done, value }) {
+    // 結果オブジェクトには2つのプロパティが含まれます
+    // done  - ストリームがすべてのデータを既に提供している場合は true
+    // value - 一部のデータ。 done が true の場合、常に undefined
+    if (done) {
+      console.log("Stream complete");
+      para.textContent = result;
+      return;
+    }
+
+    // フェッチしたストリームの値は Uint8Array です
+    charsReceived += value.length;
+    const chunk = value;
+    let listItem = document.createElement('li');
+    listItem.textContent = 'Received ' + charsReceived + ' characters so far. Current chunk = ' + chunk;
+    list2.appendChild(listItem);
+
+    result += chunk;
+
+    // さらに読み、この関数を再度呼び出します
+    return reader.read().then(processText);
+  });
+}
+
+for await(a of xx)がつかえるか？？
+
+こういうやり方がある：
+for await (const chunk of readableStream) { // 非同期イテレーターなのでfor-await-of文で読める
+  console.log(chunk);
+}
+
+Type 'ReadableStream<any>' must have a '[Symbol.asyncIterator]()' method that returns an async iterator.ts(2504)
+なぜかうまくつっこめない
+
+こういうのもある
+const chunkList = await Array.fromAsync(readableStream);
+
+ブラウザでは実装されてない。
+無限ループで、doneで判断するしかない。
+
+const reader = readableStream.getReader();
+while (true) {
+  const { done, value } = reader.read();
+  if (done) break;
+  console.log(value)
+}
+これがブラウザでは正解か。
+
+ChatGPT.vue:254 Uncaught (in promise) TypeError: Failed to execute 'getReader' on 'ReadableStream': ReadableStreamDefaultReader constructor can only accept readable streams that are not yet locked to a reader
+    at Proxy.imgGen (ChatGPT.vue:254:42)
+
+getReaderは何度もできないのかも
+
+できた！！！
+
+もしかしてwhileがうまくいかなかったのもそのせい？？
+
+ net::ERR_INVALID_URL
+
+whileループでチャンクが分かれているところでおかしくなってる？？
+そもそもあっているかをURL返却の値と比較してみるか
+
+b64_json
+: 
+"iVBORw0KGgoAAAANSUhEUgAA
+
+url
+: 
+"https://oaidalleapiprodscus.blob.core.windows.net/private/org-k42yoMTxV4ogAL4zt
+なるほど、URLは先方で保持されているのか。。。だからcors問題が発生する。しかも１時間だけだし。
+
+じゃあ、上記のb64_jsonをそのまま使えば大丈夫？？
+
+できた！！！！
+
+    const json = await response.json()
+    console.log(json)
+    const b64 = json.data[0].b64_json
+    $imgGenR.value!.src = "data:image/png;base64," + b64
+
+じゃあ、ドラッグしても大丈夫なのか？？？
+cors問題は発生しない？？
+
+成功した！！！
+完璧！！
+
+const json = await response.json()
+console.log(json)
+const b64 = json.data[0].b64_json
+$imgGenR.value!.src = "data:image/png;base64," + b64
+
+
+結局以下でよかった
+const json = await response.json()
+$imgGenR.value!.src = "data:image/png;base64," + json.data[0].b64_json
+
+画像バリエーションもb64にしておくか。。。
+
+完璧にやりたいことは全部できた。。。
+
+あとは、複数パターンの画像生成くらいか。。。
+
+
+次は音声で試してみるか。。。。
+
+いったんビルドしてコミットしておく
+

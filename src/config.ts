@@ -11,7 +11,7 @@ export const CFG: CFG = {
     CHAT: 'https://api.openai.com/v1/chat/completions',
     IMG_GEN: 'https://api.openai.com/v1/images/generations',
     IMG_EDIT: 'https://api.openai.com/v1/images/edits',
-    IMG_VAR: 'https://api.openai.com/v1/images/varitations',
+    IMG_VAR: 'https://api.openai.com/v1/images/variations',
     AUDIO_TRANSCRIPT: 'https://api.openai.com/v1/audio/transcriptions',
     AUDIO_TRANSLATION: 'https://api.openai.com/v1/audio/transcriptions',
     MODERATIONS: 'https://api.openai.com/v1/moderations',

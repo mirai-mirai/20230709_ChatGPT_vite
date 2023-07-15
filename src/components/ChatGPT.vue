@@ -219,37 +219,36 @@ const imgGen = async () => {
   dispResult('Loading...')
 
   const prompt = ($imgGenQ.value as HTMLTextAreaElement).value
+  const response_format = ["url", "b64_json"][1]
 
   const body = JSON.stringify(
-    {
-      prompt,
-      size: '256x256',
-      response_format: "url"
-    })
+    { prompt, size: '256x256', response_format })
 
   console.log(body)
 
   const response = await fetch(
-    CFG.API.IMG_GEN,
-    {
-      method: 'POST',
-      headers,
-      body
-    })
+    CFG.API.IMG_GEN, { method: 'POST', headers, body })
+  console.log(response)
+
   const json = await response.json()
+  $imgGenR.value!.src = "data:image/png;base64," + json.data[0].b64_json
+
   dispResult('Received')
-  $imgGenR.value!.src = json.data[0].url
 
 }
 
 // 画像編集
 const $imgEditQ = ref<HTMLElement>()
 const $imgEditA = ref<HTMLElement>()
-const $imgEditOut = ref<HTMLImageElement>()
 const $imgEditIn = ref<HTMLImageElement>()
+const $imgEditOut = ref<HTMLImageElement>()
 const $imgEditFile = ref<HTMLInputElement>()
+const $imgEditCanvas = ref<HTMLCanvasElement>()
+const $resetMask = ref<HTMLButtonElement>()
+const brushSize = ref<number>(10)
+const imgSize = ref<string>('256x256')
+let draggedItem: HTMLElement | null = null
 let blobUploaded: string
-let imgBLob: Blob
 
 const uploadImg = () => {
   const file = $imgEditFile.value!.files![0]
@@ -265,43 +264,118 @@ const imgEdit = async () => {
 
   const prompt = ($imgEditQ.value as HTMLTextAreaElement).value
   const body = new FormData();
-  const imgSize = ['256x256', '512x512', '1024x1024']
-  body.append('image', imgBLob);
-  body.append('prompt', prompt);
-  body.append('size', imgSize[0]);
-  body.append('response_format', 'url');
-  const headers = new Headers({ 'Authorization': 'Bearer ' + CFG.K1 + CFG.K2 })
-  const response = await fetch(
-    CFG.API.IMG_EDIT, { method: 'POST', headers, body })
-  console.log(response)
-  const json = await response.json()
-  dispResult('Received')
-  $imgEditOut.value!.src = json.data[0].url
+  const $canvas = $imgEditCanvas.value as HTMLCanvasElement
+  $canvas.toBlob(async (blob) => {
+    body.append('image', blob!);
+    body.append('prompt', prompt);
+    body.append('size', imgSize.value);
+    body.append('response_format', 'b64_json');
+    const headers = new Headers({ 'Authorization': 'Bearer ' + CFG.K1 + CFG.K2 })
+    const response = await fetch(
+      CFG.API.IMG_EDIT, { method: 'POST', headers, body })
+    console.log(response)
+    const json = await response.json()
+    dispResult('Received')
+    $imgEditOut.value!.src = "data:image/png;base64," + json.data[0].b64_json
+  })
 }
+
+const imgVar = async () => {
+  console.clear()
+  const dispResult = (res: string) => { $imgEditA.value!.innerHTML = res }
+  dispResult('Loading...')
+
+  const body = new FormData();
+  const $canvas = $imgEditCanvas.value as HTMLCanvasElement
+  const headers = new Headers({ 'Authorization': 'Bearer ' + CFG.K1 + CFG.K2 })
+  $canvas.toBlob(async (blob) => {
+    body.append('image', blob!);
+    body.append('size', imgSize.value);
+    body.append('response_format', 'b64_json');
+    const response = await fetch(
+      CFG.API.IMG_VAR, { method: 'POST', headers, body })
+    console.log(response)
+    const json = await response.json()
+    dispResult('Received')
+    $imgEditOut.value!.src = "data:image/png;base64," + json.data[0].b64_json
+  })
+}
+
 
 window.onload = () => {
   const $img = $imgEditIn.value as HTMLImageElement
+  const $canvas = $imgEditCanvas.value as HTMLCanvasElement
   const resizeImg = async () => {
-    console.log('resize image')
-    const resizeRatio = 256 / Math.max($img.width, $img.height)
-    const imgUp = await createImageBitmap($img, {
-      resizeWidth: $img.width * resizeRatio,
-      resizeHeight: $img.height * resizeRatio,
+    const ratio = Math.min(1, 512 / Math.max($img.width, $img.height))
+    const resizedBMP = await createImageBitmap($img, {
+      resizeWidth: $img.width * ratio,
+      resizeHeight: $img.height * ratio,
       resizeQuality: 'high'
     })
-    const canvas = document.createElement('canvas')
-    const { width, height } = imgUp
-    console.log(`size: ${width}x${height}`)
-    const squareSize = Math.max(width, height)
-    canvas.width = squareSize
-    canvas.height = squareSize
-    const ctx = canvas.getContext('2d')
-    ctx!.drawImage(imgUp, 0, 0)
-    canvas.toBlob((blob) => { imgBLob = blob! })
+    console.log(`resize: ${$img.width}x${$img.height} -> ${resizedBMP.width}x${resizedBMP.height}`)
+    const canvasSize = Math.max(resizedBMP.width, resizedBMP.height)
+    $canvas.width = canvasSize
+    $canvas.height = canvasSize
+    const ctx = $canvas.getContext('2d')!
+    ctx.fillStyle = 'black'
+    const { width, height } = resizedBMP
+    if (width < canvasSize)
+      ctx.fillRect(width, 0, canvasSize - width, canvasSize)
+    else
+      ctx.fillRect(0, height, canvasSize, canvasSize - height)
+    ctx.drawImage(resizedBMP, 0, 0)
   }
   $img.onload = resizeImg
   resizeImg()
+  let isDrawing: boolean = false
+  $canvas.addEventListener('mousemove', (e: MouseEvent) => {
+    if (!isDrawing) return
+    const x = e.offsetX * $canvas.width / $canvas.clientWidth
+    const y = e.offsetY * $canvas.height / $canvas.clientHeight
+    const s = brushSize.value
+    $canvas.getContext('2d')!.clearRect(x - s, y - s, s * 2, s * 2)
+  })
+  const mouseDown = () => { isDrawing = true }
+  const mouseUp = () => { isDrawing = false }
+  const cursorOn = () => { $canvas.style.cursor = 'crosshair' }
+  const cursorOff = () => { $canvas.style.cursor = 'default' }
+  $canvas.addEventListener('mousedown', mouseDown)
+  $canvas.addEventListener('mouseup', mouseUp)
+  $canvas.addEventListener('mouseenter', cursorOn)
+  $canvas.addEventListener('mouseout', () => { mouseUp(); cursorOff() })
 
+  const dropImage = (e: DragEvent) => {
+    e.preventDefault()
+    console.log(e)
+    const src = e.dataTransfer!.getData('text/plain')
+    if (src) {
+      $imgEditIn.value!.crossOrigin = 'anonymous'
+      $imgEditIn.value!.src = src
+      resizeImg()
+      return
+    }
+
+    if (!e.dataTransfer!.files.length) return
+    const file = (e as DragEvent).dataTransfer!.files[0]
+    if (!file.type.startsWith('image/')) return
+    if (blobUploaded) URL.revokeObjectURL(blobUploaded)
+    blobUploaded = URL.createObjectURL(file)
+    $imgEditIn.value!.src = blobUploaded
+    resizeImg()
+  }
+
+  $canvas.addEventListener('dragover', e => { e.preventDefault() })
+  $canvas.addEventListener('drop', dropImage)
+
+  $resetMask.value!.addEventListener('click', resizeImg)
+
+  $imgGenR.value!.addEventListener('dragstart', e => {
+    console.log(e)
+    draggedItem = e.target as HTMLElement
+
+    e.dataTransfer!.setData('text/plain', $imgGenR.value!.src)
+
+  })
 }
 
 </script>
@@ -348,22 +422,36 @@ window.onload = () => {
       <br>
       <button type="button" @click="imgGen()">画像生成</button><br>
       <div class="answer" ref="$imgGenA"> </div>
-      <img class="imgResult" ref="$imgGenR" /><br>
+      <img class="imgResult" ref="$imgGenR" src="../assets/noimage.png" draggable="true" /><br>
     </div>
 
     <!-- 画像編集 -->
     <div class="card">
       <input type="file" ref="$imgEditFile" accept="image/*" @change="uploadImg" />
       <br>
-      4MB以下の画像をアップロードしてください
+      4MB以下の画像をアップロードしてください(ドロップでもOK)<br>
+      修正したい箇所を消してください
       <br>
       <img class="imgUpload" ref="$imgEditIn" src="../assets/banana.png" />
-      <button type="button" @click="">マスクのクリア</button><br>
+      <canvas class="imgEditCanvas" ref="$imgEditCanvas"></canvas>
+      <br>
+      消しゴムサイズ<input type="range" min="1" max="50" v-model="brushSize" step="1" />
+      {{ brushSize }}<br>
+      <button type="button" ref="$resetMask">マスクのクリア</button><br>
+      プロンプト：<br>
       <textarea class="question" ref="$imgEditQ">an apple is placed around the banana</textarea>
       <br>
-      <button type="button" @click="imgEdit()">画像修正</button><br>
+      <div>出力画像サイズ</div>
+      <input type="radio" id="256" value="256x256" v-model="imgSize" />
+      <label for="256">256</label>
+      <input type="radio" id="512" value="512x512" v-model="imgSize" />
+      <label for="512">512</label>
+      <input type="radio" id="1024" value="1024x1024" v-model="imgSize" />
+      <label for="1024">1024</label><br>
+      <button type="button" @click="imgEdit()">画像補完</button>
+      <button type="button" @click="imgVar()">画像バリエーション</button><br>
       <div class="answer" ref="$imgEditA"> </div>
-      <img class="imgResult" ref="$imgEditOut" />
+      <img class="imgResult" ref="$imgEditOut" src="../assets/noimage.png" />
     </div>
 
   </div>
@@ -392,7 +480,7 @@ window.onload = () => {
 
 button {
   width: 200px;
-  margin: 10px 0px 10px 0px;
+  margin: 10px 10px 10px 0px;
 }
 
 .question {
@@ -408,8 +496,12 @@ button {
 }
 
 .imgUpload {
+  display: none;
+}
+
+.imgEditCanvas {
   width: auto;
-  max-height: 300px;
+  max-height: 500px;
   margin: 10px 0px 10px 0px;
 }
 
