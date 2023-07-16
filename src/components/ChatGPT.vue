@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { jsx } from 'vue/jsx-runtime';
 import { CFG } from '../config'
-import { queuePostFlushCb, ref } from 'vue'
+import { ref } from 'vue'
 
 
 const headers = new Headers(
@@ -247,7 +247,7 @@ const $imgEditCanvas = ref<HTMLCanvasElement>()
 const $resetMask = ref<HTMLButtonElement>()
 const brushSize = ref<number>(10)
 const imgSize = ref<string>('256x256')
-let draggedItem: HTMLElement | null = null
+// let draggedItem: HTMLElement | null = null
 let blobUploaded: string
 
 const uploadImg = () => {
@@ -301,8 +301,52 @@ const imgVar = async () => {
   })
 }
 
+// 音声認識
+const $recBtn = ref<HTMLButtonElement>()
+const $audio = ref<HTMLAudioElement>()
+const $transcript = ref<HTMLButtonElement>()
+let mediaRecorder: MediaRecorder | null = null
+const audioBlobs: Blob[] = []
+
+const initMic = async () => {
+  console.log('initMic')
+  const recBtn = $recBtn.value as HTMLButtonElement
+  recBtn.addEventListener('mousedown', startRec)
+  recBtn.addEventListener('mouseup', stopRec)
+  recBtn.addEventListener('mouseout', stopRec)
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+  mediaRecorder = new MediaRecorder(stream)
+  mediaRecorder.addEventListener('dataavailable', e => {
+    console.log('dataavailable')
+    audioBlobs.push(e.data)
+  })
+  mediaRecorder.addEventListener('stop', e => {
+    const audio = $audio.value as HTMLAudioElement
+    console.log('stop')
+    const audioBlob = new Blob(
+      audioBlobs, { type: 'audio/x-mpeg-3' })
+    const audioURL = URL.createObjectURL(audioBlob)
+    audio.src = audioURL
+    audio.controls = true
+    audio.play()
+    audioBlobs.length = 0
+  })
+}
+const startRec = () => {
+  $recBtn.value!.innerText = '録音中...'
+  mediaRecorder?.start()
+  console.log('startRec')
+}
+const stopRec = () => {
+  $recBtn.value!.innerText = '録音開始'
+  mediaRecorder?.stop()
+
+  console.log('stopRec')
+}
+
 
 window.onload = () => {
+  initMic()
   const $img = $imgEditIn.value as HTMLImageElement
   const $canvas = $imgEditCanvas.value as HTMLCanvasElement
   const resizeImg = async () => {
@@ -349,7 +393,6 @@ window.onload = () => {
     console.log(e)
     const src = e.dataTransfer!.getData('text/plain')
     if (src) {
-      $imgEditIn.value!.crossOrigin = 'anonymous'
       $imgEditIn.value!.src = src
       resizeImg()
       return
@@ -362,19 +405,29 @@ window.onload = () => {
     blobUploaded = URL.createObjectURL(file)
     $imgEditIn.value!.src = blobUploaded
     resizeImg()
+    $canvas.style.boxShadow = 'none'
   }
 
-  $canvas.addEventListener('dragover', e => { e.preventDefault() })
+  $canvas.addEventListener('dragover', e => {
+    e.preventDefault()
+    $canvas.style.boxShadow = '5px 5px 5px 5px #888888'
+  })
+  $canvas.addEventListener('mouseout', e => {
+    $canvas.style.boxShadow = 'none'
+  })
+  $canvas.addEventListener('mouseup', e => {
+    e.preventDefault()
+    $canvas.style.boxShadow = 'none'
+  })
+  $canvas.addEventListener('mouseleave', e => {
+    $canvas.style.boxShadow = 'none'
+  })
   $canvas.addEventListener('drop', dropImage)
 
   $resetMask.value!.addEventListener('click', resizeImg)
 
   $imgGenR.value!.addEventListener('dragstart', e => {
-    console.log(e)
-    draggedItem = e.target as HTMLElement
-
     e.dataTransfer!.setData('text/plain', $imgGenR.value!.src)
-
   })
 }
 
@@ -382,9 +435,17 @@ window.onload = () => {
 
 <template>
   <div>
+
     <!-- タイトル -->
     <h1 id="title">== ChatGPT PoC == </h1>
-    <h3 id="author">T.Shiozaki 2023/7/12</h3>
+    <h3 id="author">T.Shiozaki 2023/7/16</h3>
+
+    <!-- 音声認識 -->
+    <div class="card">
+      <button type="button" ref="$recBtn">録音開始</button><br>
+      <audio controls ref="$audio"></audio>
+      <!-- <button type="button" ref="$transcript">送信</button><br> -->
+    </div>
 
     <!-- モデル一覧 -->
     <div class="card">
@@ -432,7 +493,7 @@ window.onload = () => {
       4MB以下の画像をアップロードしてください(ドロップでもOK)<br>
       修正したい箇所を消してください
       <br>
-      <img class="imgUpload" ref="$imgEditIn" src="../assets/banana.png" />
+      <img class="imgUpload" ref="$imgEditIn" src="../assets/noimage.png" />
       <canvas class="imgEditCanvas" ref="$imgEditCanvas"></canvas>
       <br>
       消しゴムサイズ<input type="range" min="1" max="50" v-model="brushSize" step="1" />
@@ -453,7 +514,6 @@ window.onload = () => {
       <div class="answer" ref="$imgEditA"> </div>
       <img class="imgResult" ref="$imgEditOut" src="../assets/noimage.png" />
     </div>
-
   </div>
 </template>
 

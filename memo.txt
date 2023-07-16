@@ -882,6 +882,8 @@ while (true) {
 }
 これがブラウザでは正解か。
 
+
+
 ChatGPT.vue:254 Uncaught (in promise) TypeError: Failed to execute 'getReader' on 'ReadableStream': ReadableStreamDefaultReader constructor can only accept readable streams that are not yet locked to a reader
     at Proxy.imgGen (ChatGPT.vue:254:42)
 
@@ -940,4 +942,113 @@ $imgGenR.value!.src = "data:image/png;base64," + json.data[0].b64_json
 次は音声で試してみるか。。。。
 
 いったんビルドしてコミットしておく
+
+録音機能を作っていく
+
+ボタンを押している間だけ録音して話すとmp3形式の
+Blobを作成して、そのままサーバ送信する
+
+まずは、ボタンのイベントを検知するか
+
+const $recBtn = ref<HTMLButtonElement>()
+const $transcript = ref<HTMLButtonElement>()
+let mediaRecorder: MediaRecorder | null = null
+const audioBlobs: Blob[] = []
+
+const initMic = async () => {
+  console.log('initMic')
+  const recBtn = $recBtn.value as HTMLButtonElement
+  recBtn.addEventListener('mousedown', startRec)
+  recBtn.addEventListener('mouseup', stopRec)
+  recBtn.addEventListener('mouseout', stopRec)
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+  mediaRecorder = new MediaRecorder(stream)
+  mediaRecorder.addEventListener('dataavailable', e => {
+    console.log('dataavailable')
+    audioBlobs.push(e.data)
+  })
+}
+const startRec = () => {
+  mediaRecorder?.start()
+  console.log('startRec')
+}
+const stopRec = () => {
+  console.log('stopRec')
+}
+
+mediaRecorderで音声を管理するらしい
+startで録音を開始してBlobを作り始める
+
+timesliceというオプションで、Blobに切るタイミングを設定できる
+
+1秒単位か、5秒単位化など　ミリ秒で指定する
+デフォルトはどうなってる？？
+
+この時間単位でdataavailableイベントが発火する
+そのタイミングで受け取ったデータを変換して保存していく
+長時間の録音のときは、スライスしないといけないか？？
+
+timesliceを渡さなければ、１つのBlobに追加されていく
+requestData()をそれまでにためた録音データをBlobで受け取る
+
+ということは、timesliceを指定しなければ、dataavailableは１回しか呼ばれない？？
+
+MediaRecorder.stateでステートが確認できるらしい
+inactive => recording => paused 
+
+MediaRecorder.stop()で録音を停止する
+
+stateがinactiveに変わる
+dataavailableイベントが発火する　Blobが作成される
+
+MediaRecorder　のstopイベントが発火する？？
+完全に止めるには全ストリームを閉じる必要がある
+
+MediaRecorderのstopイベントをキャプチャする　mp3ブロブを作成する
+
+//save audio type to pass to set the Blob type
+let mimeType = audioRecorder.mediaRecorder.mimeType;
+
+//listen to the stop event in order to create & return a single Blob object
+audioRecorder.mediaRecorder.addEventListener("stop", () => {
+    //create a single blob object, as we might have gathered a few Blob objects that needs to be joined as one
+    let audioBlob = new Blob(audioRecorder.audioBlobs, { type: mimeType });
+
+    //resolve promise with the single audio blob representing the recorded audio
+    resolve(audioBlob);
+});
+
+
+//stop the recording feature
+audioRecorder.mediaRecorder.stop();
+
+//stop all the tracks on the active stream in order to stop the stream
+audioRecorder.stopStream();
+
+//reset API properties for next recording
+audioRecorder.resetRecordingProperties();
+
+stopStream: function() {
+    //stopping the capturing request by stopping all the tracks on the active stream
+    audioRecorder.streamBeingCaptured.getTracks() //get all tracks from the stream
+            .forEach(track /*of type MediaStreamTrack*/ => track.stop()); //stop each one
+},
+/** Reset all the recording properties including the media recorder and stream being captured*/
+resetRecordingProperties: function () {
+    audioRecorder.mediaRecorder = null;
+    audioRecorder.streamBeingCaptured = null;
+
+    /*No need to remove event listeners attached to mediaRecorder as
+    If a DOM element which is removed is reference-free (no references pointing to it), the element itself is picked
+    up by the garbage collector as well as any event handlers/listeners associated with it.
+    getEventListeners(audioRecorder.mediaRecorder) will return an empty array of events.*/
+}
+
+完全に息の根を止める。。。
+
+録音成功！！！！
+
+録音中はボタンの名前を変えたい
+
+１回ビルド＆コミットしておく
 
