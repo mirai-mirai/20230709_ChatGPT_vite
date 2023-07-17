@@ -1048,7 +1048,124 @@ resetRecordingProperties: function () {
 
 録音成功！！！！
 
+
+録音はできたけど、サーバ側でエラーになる
+
+
+
 録音中はボタンの名前を変えたい
 
 １回ビルド＆コミットしておく
 
+次は、どうやってサーバに送るか
+またformData形式で送ればOK??
+
+POST https://api.openai.com/v1/audio/transcriptions 400 (Bad Request)
+
+やっぱりだめか。。。
+
+const audioURL = URL.createObjectURL(audioBlob)
+
+body.append('file', audioURL!);
+
+
+
+"1 validation error for Request
+body -> file
+  Expected UploadFile, received: <class 'str'> (type=value_error)"
+
+blobのままで送った方がよい？？？
+画像のときは？？
+blobで送ってた！！
+
+同じようにやってみよう
+
+message
+: 
+"Invalid file format. Supported formats: ['m4a', 'mp3', 'webm', 'mp4', 'mpga', 'wav', 'mpeg', 'ogg', 'oga', 'flac']"
+
+ファイル形式が違う？？？？
+
+これが良くない？？？
+const audioBlob = new Blob(audioBlobs, { type: 'audio/x-mpeg-3' })
+
+
+やっぱりだめ。。。
+const audioBlob = new Blob(audioBlobs, { type: 'audio/mp3' })
+
+キャプチャするときに指定している？？？
+形式はどこで決めるのか？？？
+
+これでデフォルトのタイプを取得するか
+
+let mimeType = mediaRecorder!.mimeType;
+const audioBlob = new Blob(audioBlobs, { type: mimeType })
+
+同じエラー。。。
+
+"Invalid file format. Supported formats: ['m4a', 'mp3', 'webm', 'mp4', 'mpga', 'wav', 'mpeg', 'ogg', 'oga', 'flac']"
+
+
+mediaRecorderのMIMEを確認
+audio/webm;codecs=opus
+
+
+これを変えたい！！
+MediaRecorderを作るときに指定するっぽい：
+const options = {
+  audioBitsPerSecond: 128000,
+  videoBitsPerSecond: 2500000,
+  mimeType: 'video/mp4'
+}
+const mediaRecorder = new MediaRecorder(stream, options);
+m = mediaRecorder;
+
+
+この形式だったらどうか？？
+audio/webm;codecs=opus
+
+https://dirask.com/posts/JavaScript-supported-Audio-Video-MIME-Types-by-MediaRecorder-Chrome-and-Firefox-jERn81
+そもそもブラウザとOSによって、サポート形式が決まってるっぽい
+
+一度、webm形式でファイルDLさせてみるか
+
+それをファイルとして読み取ってみたらどうか
+
+それかまずは、mp3ファイルで試してみるか
+
+疲れた。。。
+
+wav形式に自分で変換しないといけない？？
+
+encode-audio.jaが使える？？
+
+https://zenn.dev/tatsuyasusukida/articles/097321c14ec6f5
+
+まずは、mp3ファイルをアップする機能を作ろう
+
+audioタグからcontent-typeを取得できないか？？
+
+opusコーデックがダメなのか？？
+
+ファイルをそのまま送ってみるか
+
+ファイル送信はうまくいった！！
+
+translateでエラーになる
+
+Not found　ＵＲＬが違う？？？
+
+CFGのつづりがまちがってた
+transrate => translate
+
+"1 validation error for Request\nbody -> language\n  value is not a valid enumeration member; permitted: 'en' (type=type_error.enum; enum_values=[<TranslationLanguage.EN: 'en'>])"
+
+英語に直すときは、言語指定が不要らしい
+
+試しに外してみる
+
+翻訳もうまくいった
+
+録音ボタンを使えるようになりたい
+
+ビルドとこみっとしておく

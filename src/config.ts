@@ -13,7 +13,7 @@ export const CFG: CFG = {
     IMG_EDIT: 'https://api.openai.com/v1/images/edits',
     IMG_VAR: 'https://api.openai.com/v1/images/variations',
     AUDIO_TRANSCRIPT: 'https://api.openai.com/v1/audio/transcriptions',
-    AUDIO_TRANSLATION: 'https://api.openai.com/v1/audio/transcriptions',
+    AUDIO_TRANSLATE: 'https://api.openai.com/v1/audio/translations',
     MODERATIONS: 'https://api.openai.com/v1/moderations',
   }
 }
