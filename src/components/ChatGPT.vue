@@ -357,21 +357,33 @@ const initMic = async () => {
   recBtn.addEventListener('mousedown', startRec)
   recBtn.addEventListener('mouseup', stopRec)
   recBtn.addEventListener('mouseout', stopRec)
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-  const options = {
-    audioBitsPerSecond: 128000,
-    videoBitsPerSecond: 2500000,
-    mimeType: 'audio/webm;codecs=opus'
-  }
+  // const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+  // const options = {
+  //   audioBitsPerSecond: 128000,
+  //   videoBitsPerSecond: 2500000,
+  //   mimeType: 'audio/webm;codecs=opus'
+  // }
 
-  mediaRecorder = new MediaRecorder(stream, options)
-  mediaRecorder.addEventListener('dataavailable', e => {
-    console.log('dataavailable')
-    audioBlobs.push(e.data)
-  })
+  // mediaRecorder = new MediaRecorder(stream, options)
+  // mediaRecorder.addEventListener('dataavailable', e => {
+  //   console.log('dataavailable')
+  //   audioBlobs.push(e.data)
+  // })
 
+  // mediaRecorder.addEventListener('stop', async e => {
+  //   const audio = $audio.value as HTMLAudioElement
+  //   console.log('stop')
+  //   let mimeType = mediaRecorder!.mimeType;
+  //   console.log(mimeType)
 
-  const sendAudio = async (type: 'transcript' | 'transrate') => {
+  //   audioBlob = new Blob(audioBlobs, { type: mimeType })
+  //   const audioURL = URL.createObjectURL(audioBlob)
+  //   audio.src = audioURL
+  //   audio.controls = true
+  //   audioBlobs.length = 0
+  // })
+
+  const sendAudio = async (type: 'transcript' | 'translate') => {
     const file = audioFile && audioFile.files![0]
     if (!file) return
     console.clear()
@@ -393,20 +405,8 @@ const initMic = async () => {
     console.log(json)
   }
   $transcript.value!.addEventListener('click', () => { sendAudio('transcript') })
-  $transrate.value!.addEventListener('click', () => { sendAudio('transrate') })
+  $transrate.value!.addEventListener('click', () => { sendAudio('translate') })
 
-  mediaRecorder.addEventListener('stop', async e => {
-    const audio = $audio.value as HTMLAudioElement
-    console.log('stop')
-    let mimeType = mediaRecorder!.mimeType;
-    console.log(mimeType)
-
-    audioBlob = new Blob(audioBlobs, { type: mimeType })
-    const audioURL = URL.createObjectURL(audioBlob)
-    audio.src = audioURL
-    audio.controls = true
-    audioBlobs.length = 0
-  })
 }
 
 
@@ -542,12 +542,12 @@ window.onload = () => {
     <!-- 画像生成 -->
     <div class="card">
       <h3>画像生成 {{ CFG.API.IMG_GEN }}</h3>
-
+      <div>プロンプト：</div>
       <textarea class="question" ref="$imgGenQ">a fighter jet is flying in the sky</textarea>
       <br>
       <button type="button" @click="imgGen()">画像生成</button><br>
       <div class="answer" ref="$imgGenA"> </div>
-      <img class="imgResult" ref="$imgGenR" src="../assets/noimage.png" draggable="true" /><br>
+      <img class="imgResult" ref="$imgGenR" draggable="true" /><br>
     </div>
 
     <!-- 画像編集 -->
@@ -585,9 +585,9 @@ window.onload = () => {
       <button type="button" @click="imgEdit()">画像編集</button>
       <button type="button" @click="imgVar()">画像バリエーション</button><br>
       <div class="answer" ref="$imgEditA"> </div>
-      <img class="imgResult" ref="$imgEditOut1" src="../assets/noimage.png" />
-      <img class="imgResult" ref="$imgEditOut2" src="../assets/noimage.png" />
-      <img class="imgResult" ref="$imgEditOut3" src="../assets/noimage.png" />
+      <img class="imgResult" ref="$imgEditOut1" />
+      <img class="imgResult" ref="$imgEditOut2" />
+      <img class="imgResult" ref="$imgEditOut3" />
     </div>
 
     <!-- 音声認識 -->
@@ -596,7 +596,7 @@ window.onload = () => {
       <h3>音声英訳 {{ CFG.API.AUDIO_TRANSLATE }}</h3>
 
       <button type="button" ref="$recBtn" style="display:none">録音開始</button>
-      <input type="file" ref="$audioFile" accept="audio/*" /><br>
+      <input type="file" ref="$audioFile" accept="audio/*" /><br><br>
       <audio controls ref="$audio"></audio><br>
       <button type="button" ref="$transcript">音声認識</button>
       <button type="button" ref="$transrate">音声英訳</button><br>
@@ -618,13 +618,13 @@ window.onload = () => {
 }
 
 .card {
-  background-color: #f4f4f4;
+  background-color: #223;
   display: flexbox;
   width: auto;
   height: auto;
   margin: 10px 0px 20px 0px;
   padding: 5px 10px 10px 10px;
-  box-shadow: #d7d7d7 0px 5px 5px 0px;
+  box-shadow: darkslategray 0px 5px 5px 0px;
 }
 
 button {
