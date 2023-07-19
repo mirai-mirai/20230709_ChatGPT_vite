@@ -16,6 +16,16 @@ export const CFG: CFG = {
     AUDIO_TRANSLATE: 'https://api.openai.com/v1/audio/translations',
     MODERATIONS: 'https://api.openai.com/v1/moderations',
   },
+  CHAT_MODELS: [
+    'gpt-3.5-turbo',
+    'gpt-3.5-turbo-0613',
+    'gpt-3.5-turbo-16k',
+    'gpt-3.5-turbo-16k-0613',
+    'gpt-4',
+    'gpt-4-0613',
+    'gpt-4-32k',
+    'gpt-4-32k-0613',
+  ],
   PROMPTS:
     [
       {
@@ -38,5 +48,18 @@ export const CFG: CFG = {
         ],
         prompts: '古池や',
       },
-    ]
+      {
+        name: 'カスタム',
+        instructions: '',
+        samples: [],
+        prompts: '',
+      },
+    ],
+  AUDIO_LANGUAGES: [
+    { text: '', value: '' },
+    { text: '日本語', value: 'ja' },
+    { text: '韓国語', value: 'ko' },
+    { text: '中国語', value: 'zh' },
+    { text: '英語', value: 'en' },
+  ]
 }

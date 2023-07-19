@@ -37,13 +37,14 @@ const listmodels = async () => {
 }
 
 // チャット
-const $chatModel = ref<HTMLSelectElement>()
+const $chatSample = ref<HTMLSelectElement>()
 const $chatReceived = ref<HTMLDivElement>()
 const $sendPrompt = ref<HTMLButtonElement>()
 const $instructions = ref<HTMLTextAreaElement>()
+const $gptModel = ref<HTMLSelectElement>()
 const $samples = ref<HTMLTextAreaElement>()
 const $prompts = ref<HTMLTextAreaElement>()
-const temperature = ref<number>(0.7)
+const chatTemperature = ref<number>(0.7)
 const chatn = ref<number>(1)
 const maxTokens = ref<number>(1000)
 const initChat = () => {
@@ -60,12 +61,18 @@ const initChat = () => {
   })
 
   const disp = (msg: string) => { $chatReceived!.value!.innerHTML = msg }
-  const chatModel = $chatModel.value as HTMLSelectElement
+  const chatModel = $chatSample.value as HTMLSelectElement
   const prompts = CFG.PROMPTS
   prompts.forEach((obj: { name: string }) => {
     const option = document.createElement('option')
     option.text = obj.name
     chatModel.appendChild(option)
+  })
+  const models = CFG.CHAT_MODELS
+  models.forEach((model_name: string) => {
+    const option = document.createElement('option')
+    option.text = model_name
+    $gptModel.value!.appendChild(option)
   })
   const setPrompts = () => {
     const example = prompts.find((obj: { name: string }) => obj.name == chatModel.value)
@@ -106,9 +113,9 @@ const initChat = () => {
       "content": $prompts.value?.value
     })
     const bodyJSON = {
-      'model': "gpt-3.5-turbo",
+      'model': $gptModel.value!.value,
       messages,
-      "temperature": temperature.value,
+      "temperature": chatTemperature.value,
       "max_tokens": maxTokens.value,
       "n": chatn.value
     }
@@ -254,6 +261,9 @@ const $transrate = ref<HTMLButtonElement>()
 const $recA = ref<HTMLDivElement>()
 const $recA2 = ref<HTMLDivElement>()
 const $audioFile = ref<HTMLInputElement>()
+const $audioPrompts = ref<HTMLTextAreaElement>()
+const audioTemperature = ref<number>(0)
+const $language = ref<HTMLSelectElement>()
 let mediaRecorder: MediaRecorder | null = null
 const audioBlobs: BlobPart[] = []
 let audioBlob: Blob | null = null
@@ -269,6 +279,15 @@ const initMic = async () => {
     $audio.value!.src = blobAudio
     dispResult('')
     dispResult2('')
+  })
+
+  const languages = CFG.AUDIO_LANGUAGES
+  languages.forEach((lang: { text: string, value: string }) => {
+    console.log(lang)
+    const option = document.createElement('option')
+    option.text = lang.text
+    option.value = lang.value
+    $language.value!.appendChild(option)
   })
 
   const dispResult = (res: string) => {
@@ -325,12 +344,19 @@ const initMic = async () => {
     const disp = type == 'transcript' ? dispResult : dispResult2
     disp('Loading...')
     const headers = new Headers({ 'Authorization': 'Bearer ' + CFG.K1 + CFG.K2 })
-    const body = new FormData();
+    const body: FormData = new FormData();
     // body.append('file', audioBlob!);
     body.append('file', file);
     body.append('model', 'whisper-1');
     body.append('response_format', 'verbose_json');
-    // body.append('language', 'ja'); // en 指定した方が正確性と速度がます
+    body.append('temperature', audioTemperature.value.toString());
+    if ($audioPrompts.value!.value != '')
+      body.append('prompt', $audioPrompts.value!.value);
+    if ($language.value!.value != '')
+      body.append('language', $language.value!.value);
+
+    console.log(...body.entries())
+
     const response = await fetch(
       type == 'transcript' ? CFG.API.AUDIO_TRANSCRIPT : CFG.API.AUDIO_TRANSLATE,
       { method: 'POST', headers, body })
@@ -457,7 +483,7 @@ window.onload = () => {
       <h3>■チャット {{ CFG.API.CHAT }}</h3>
       <br>
       <div>サンプル：</div>
-      <select ref="$chatModel"></select><br><br>
+      <select ref="$chatSample"></select><br><br>
       <div>
         <div class="textType">Instructions</div>
         <textarea class="prompt" ref="$instructions"></textarea>
@@ -471,9 +497,11 @@ window.onload = () => {
         <textarea class="prompt" ref="$prompts"></textarea>
       </div>
       <div class="label">tempreture</div>
-      <input type="range" min="0" max="2" v-model.number="temperature" step=".1" />
-      {{ temperature }}
+      <input type="range" min="0" max="2" v-model.number="chatTemperature" step=".1" />
+      {{ chatTemperature }}
       <br>
+      <div class="label">model</div>
+      <select ref="$gptModel"></select><br>
       <div class="label">n</div>
       <input type="number" min="1" max="10" v-model.number="chatn" step="1" /><br>
       <div class="label">maxTokens</div>
@@ -543,6 +571,16 @@ window.onload = () => {
       <button type="button" ref="$recBtn" style="display:none">録音開始</button>
       <input type="file" ref="$audioFile" accept="audio/*" /><br><br>
       <audio controls ref="$audio"></audio><br>
+      <div>
+        <div class="textType">Prompts</div>
+        <textarea class="prompt" ref="$audioPrompts"></textarea>
+      </div>
+      <div class="label">tempreture</div>
+      <input type="range" min="0" max="1" v-model.number="audioTemperature" step=".1" />
+      {{ audioTemperature == 0 ? 'auto' : audioTemperature }}
+      <br>
+      <div class="label">音声の言語</div>
+      <select ref="$language"></select><br>
       <button type="button" ref="$transcript">音声認識</button>
       <button type="button" ref="$transrate">音声英訳</button><br>
       <div class="answer" ref="$recA"></div>
