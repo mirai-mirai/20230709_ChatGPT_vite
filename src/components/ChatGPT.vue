@@ -8,7 +8,6 @@ const headers = new Headers(
   {
     'Content-Type': 'application/json',
     'Authorization': 'Bearer ' + CFG.K1 + CFG.K2,
-    // 'OpenAI-Organization': CFG.ORG_ID,
   }
 )
 
@@ -37,175 +36,102 @@ const listmodels = async () => {
   dispResult(result)
 }
 
-// つっこんでもらう
-const $tukkomiQ = ref<HTMLElement>()
-const $tukkomiA = ref<HTMLDivElement>()
-const tukkomi = async () => {
-  console.clear()
-  const dispResult = (res: string) => {
-    ($tukkomiA.value as HTMLDivElement).innerHTML = res
-  }
-  dispResult('Loading...')
+// チャット
+const $chatModel = ref<HTMLSelectElement>()
+const $chatReceived = ref<HTMLDivElement>()
+const $sendPrompt = ref<HTMLButtonElement>()
+const $instructions = ref<HTMLTextAreaElement>()
+const $samples = ref<HTMLTextAreaElement>()
+const $prompts = ref<HTMLTextAreaElement>()
+const temperature = ref<number>(0.7)
+const chatn = ref<number>(1)
+const maxTokens = ref<number>(1000)
+const initChat = () => {
+  console.log('initChat')
 
-  const question = ($tukkomiQ.value as HTMLTextAreaElement).value
-
-  const messages = [
-    {
-      "role": "system",
-      "content": "userがぼけるので、assistantは漫才風に突っ込んでください。"
-    },
-    {
-      "role": "user",
-      "content": "ふとんがふっとんだ"
-    },
-    {
-      "role": "assistant",
-      "content": "なんでやねん"
-    },
-    {
-      "role": "user",
-      "content": question
-    },
-  ]
-
-  const body = JSON.stringify({
-    'model': "gpt-3.5-turbo",
-    messages,
-    "temperature": 0.7
-  })
-  console.log(body)
-  const response = await fetch(
-    CFG.API.CHAT,
-    {
-      method: 'POST',
-      headers,
-      body
+  const textareaEls = document.querySelectorAll("textarea");
+  textareaEls.forEach((el) => {
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+    el.addEventListener("input", () => {
+      el.style.height = "auto";
+      el.style.height = `${el.scrollHeight}px`;
     })
-  const json = await response.json()
-  dispResult(json.choices[0].message.content)
+  })
+
+  const disp = (msg: string) => { $chatReceived!.value!.innerHTML = msg }
+  const chatModel = $chatModel.value as HTMLSelectElement
+  const prompts = CFG.PROMPTS
+  prompts.forEach((obj: { name: string }) => {
+    const option = document.createElement('option')
+    option.text = obj.name
+    chatModel.appendChild(option)
+  })
+  const setPrompts = () => {
+    const example = prompts.find((obj: { name: string }) => obj.name == chatModel.value)
+    $instructions.value!.value = example!.instructions
+    let sample: string = ''
+    let isQuestion: boolean = true
+    example!.samples.forEach((s: string) => {
+      sample += isQuestion ? `Q:${s}\n` : `A:${s}\n`
+      isQuestion = !isQuestion
+    })
+    $samples.value!.value = sample
+    $prompts.value!.value = example!.prompts
+  }
+  setPrompts()
+  chatModel.addEventListener('change', setPrompts)
+
+  const sendPrompt = async () => {
+    disp('Loading...')
+    console.clear()
+
+    let messages: Object[] = []
+    messages.push({
+      "role": "assistant",
+      "content": $instructions.value?.value
+    })
+    const samples = $samples.value?.value.split('\n')
+    let isQuestion: boolean = true
+    samples?.forEach((s: string) => {
+      if (s.length < 2) return
+      messages.push({
+        "role": isQuestion ? "user" : "assistant",
+        "content": s.substring(2)
+      })
+      isQuestion = !isQuestion
+    })
+    messages.push({
+      "role": "user",
+      "content": $prompts.value?.value
+    })
+    const bodyJSON = {
+      'model': "gpt-3.5-turbo",
+      messages,
+      "temperature": temperature.value,
+      "max_tokens": maxTokens.value,
+      "n": chatn.value
+    }
+    console.log(JSON.stringify(bodyJSON, null, '\t'))
+    const body = JSON.stringify(bodyJSON)
+
+    const response = await fetch(
+      CFG.API.CHAT, { method: 'POST', headers, body })
+    const json = await response.json()
+    console.log(response)
+    console.log(json)
+    let result = '<table>'
+    json.choices.forEach((obj: { message: { content: string } }, id: number) => {
+      result += `<tr><td width='auto'>回答${id + 1}</td><td>${obj.message.content}</td style='background-color:"#fff"'></tr>`
+    })
+    result += '</table>'
+    disp(result)
+  }
+
+  $sendPrompt.value!.addEventListener('click', sendPrompt)
+
 }
 
-// ぼけてもらう
-const $bokeQ = ref<HTMLElement>()
-const $bokeA = ref<HTMLDivElement>()
-const bokete = async () => {
-  console.clear()
-  const dispResult = (res: string) => {
-    ($bokeA.value as HTMLDivElement).innerHTML = res
-  }
-  dispResult('Loading...')
-
-  const question = ($bokeQ.value as HTMLTextAreaElement).value
-
-  const messages = [
-    {
-      "role": "system",
-      "content": "userからの質問に対してassistantはできるだけふざけた回答をしてuserを笑わせてください。ただし、回答は100文字以内で。"
-    },
-    {
-      "role": "user",
-      "content": "ナルシスト漁師の特徴を教えてください"
-    },
-    {
-      "role": "assistant",
-      "content": "キャッチ＆キス＆リリース"
-    },
-    {
-      "role": "user",
-      "content": "すんごいエロい名前を考えてください"
-    },
-    {
-      "role": "assistant",
-      "content": "アーナルデ シメツケネッガー"
-    },
-    {
-      "role": "user",
-      "content": "初めてドラゴンを退治しに行くのですが、アドバイスをお願いします"
-    },
-    {
-      "role": "assistant",
-      "content": "口の中にマヨネーズを投げ込むと火を吹かなくなるよ"
-    },
-    {
-      "role": "user",
-      "content": question
-    },
-
-  ]
-
-  const body = JSON.stringify({
-    'model': "gpt-3.5-turbo",
-    messages,
-    "temperature": 0.7
-  })
-  console.log(body)
-  const response = await fetch(
-    CFG.API.CHAT,
-    {
-      method: 'POST',
-      headers,
-      body
-    })
-  const json = await response.json()
-  dispResult(json.choices[0].message.content)
-}
-
-// 俳句作成
-const $haikuQ = ref<HTMLElement>()
-const $haikuA = ref<HTMLDivElement>()
-const haiku = async () => {
-  console.clear()
-  const dispResult = (res: string) => {
-    ($haikuA.value as HTMLDivElement).innerHTML = res
-  }
-  dispResult('Loading...')
-
-  const question = ($haikuQ.value as HTMLTextAreaElement).value
-
-  const messages = [
-    {
-      "role": "system",
-      "content": "userからのお題に対してassistantは五七五の形式で美しい俳句を作ってください。俳句の最初の文字はuserが指定した文字列で開始します。"
-    },
-    {
-      "role": "user",
-      "content": "柿食えば"
-    },
-    {
-      "role": "assistant",
-      "content": "柿食えば　鐘が鳴るなり　法隆寺"
-    },
-    {
-      "role": "user",
-      "content": "古池や"
-    },
-    {
-      "role": "assistant",
-      "content": "古池や　蛙飛び込む　水の音"
-    },
-    {
-      "role": "user",
-      "content": question
-    },
-
-  ]
-
-  const body = JSON.stringify({
-    'model': "gpt-3.5-turbo",
-    messages,
-    "temperature": 0.7
-  })
-  console.log(body)
-  const response = await fetch(
-    CFG.API.CHAT,
-    {
-      method: 'POST',
-      headers,
-      body
-    })
-  const json = await response.json()
-  dispResult(json.choices[0].message.content)
-}
 
 // 画像作成
 const $imgGenQ = ref<HTMLElement>()
@@ -263,6 +189,9 @@ const imgEdit = async () => {
   console.clear()
   const dispResult = (res: string) => { $imgEditA.value!.innerHTML = res }
   dispResult('Loading...')
+  $imgEditOut1.value!.src = ""
+  $imgEditOut2.value!.src = ""
+  $imgEditOut3.value!.src = ""
 
   const prompt = ($imgEditQ.value as HTMLTextAreaElement).value
   const body = new FormData();
@@ -291,6 +220,9 @@ const imgVar = async () => {
   console.clear()
   const dispResult = (res: string) => { $imgEditA.value!.innerHTML = res }
   dispResult('Loading...')
+  $imgEditOut1.value!.src = ""
+  $imgEditOut2.value!.src = ""
+  $imgEditOut3.value!.src = ""
 
   const body = new FormData();
   const $canvas = $imgEditCanvas.value as HTMLCanvasElement
@@ -328,12 +260,15 @@ let audioBlob: Blob | null = null
 let blobAudio: string
 
 const initMic = async () => {
+  console.log('initMic')
   const audioFile = $audioFile.value as HTMLInputElement
   audioFile.addEventListener('change', e => {
     const file = audioFile.files![0]
     if (blobAudio) URL.revokeObjectURL(blobUploaded)
     blobAudio = URL.createObjectURL(file)
     $audio.value!.src = blobAudio
+    dispResult('')
+    dispResult2('')
   })
 
   const dispResult = (res: string) => {
@@ -411,6 +346,7 @@ const initMic = async () => {
 
 
 window.onload = () => {
+  initChat()
   initMic()
   const $img = $imgEditIn.value as HTMLImageElement
   const $canvas = $imgEditCanvas.value as HTMLCanvasElement
@@ -510,38 +446,46 @@ window.onload = () => {
 
     <!-- モデル一覧 -->
     <div class="card">
-      <h3>モデル一覧 {{ CFG.API.MODELS }}</h3>
+      <h3>■モデル一覧 {{ CFG.API.MODELS }}</h3>
+      <br>
       <button type="button" @click="listmodels()">OPENAI モデル一覧取得</button>
       <div class="answer" ref="$models"></div>
     </div>
 
-    <!-- 突っ込んで -->
+    <!-- Chat -->
     <div class="card">
-      <textarea class="question" ref="$tukkomiQ">この帽子どいつんだ？オランダ</textarea>
+      <h3>■チャット {{ CFG.API.CHAT }}</h3>
       <br>
-      <button type="button" @click="tukkomi()">突っ込んで</button><br>
-      <div class="answer" ref="$tukkomiA"></div>
-    </div>
-
-    <!-- ぼけて -->
-    <div class="card">
-      <textarea class="question" ref="$bokeQ">最高にかっこいい排便の仕方は？</textarea>
+      <div>サンプル：</div>
+      <select ref="$chatModel"></select><br><br>
+      <div>
+        <div class="textType">Instructions</div>
+        <textarea class="prompt" ref="$instructions"></textarea>
+      </div>
+      <div>
+        <div class="textType">Samples</div>
+        <textarea class="prompt" ref="$samples"></textarea>
+      </div>
+      <div>
+        <div class="textType">Prompts</div>
+        <textarea class="prompt" ref="$prompts"></textarea>
+      </div>
+      <div class="label">tempreture</div>
+      <input type="range" min="0" max="2" v-model.number="temperature" step=".1" />
+      {{ temperature }}
       <br>
-      <button type="button" @click="bokete()">ぼけて</button><br>
-      <div class="answer" ref="$bokeA"></div>
-    </div>
-
-    <!-- 俳句 -->
-    <div class="card">
-      <textarea class="question" ref="$haikuQ">ひと夏の</textarea>
-      <br>
-      <button type="button" @click="haiku()">俳句の続き作って</button><br>
-      <div class="answer" ref="$haikuA"></div>
+      <div class="label">n</div>
+      <input type="number" min="1" max="10" v-model.number="chatn" step="1" /><br>
+      <div class="label">maxTokens</div>
+      <input type="number" min="1" max="2000" v-model.number="maxTokens" step="100" /><br>
+      <button type="button" ref="$sendPrompt">送信</button><br>
+      <div class="answer" ref="$chatReceived"></div>
     </div>
 
     <!-- 画像生成 -->
     <div class="card">
-      <h3>画像生成 {{ CFG.API.IMG_GEN }}</h3>
+      <h3>■画像生成 {{ CFG.API.IMG_GEN }}</h3>
+      <br>
       <div>プロンプト：</div>
       <textarea class="question" ref="$imgGenQ">a fighter jet is flying in the sky</textarea>
       <br>
@@ -552,8 +496,9 @@ window.onload = () => {
 
     <!-- 画像編集 -->
     <div class="card">
-      <h3>画像編集 {{ CFG.API.IMG_EDIT }}</h3>
-      <h3>画像バリエーション {{ CFG.API.IMG_VAR }}</h3>
+      <h3>■画像編集 {{ CFG.API.IMG_EDIT }}</h3>
+      <h3>■画像バリエーション {{ CFG.API.IMG_VAR }}</h3>
+      <br>
       <input type="file" ref="$imgEditFile" accept="image/*" @change="uploadImg" />
       <br>
       4MB以下の画像をアップロードしてください(ドロップでもOK)<br>
@@ -592,9 +537,9 @@ window.onload = () => {
 
     <!-- 音声認識 -->
     <div class="card">
-      <h3>音声認識 {{ CFG.API.AUDIO_TRANSCRIPT }}</h3>
-      <h3>音声英訳 {{ CFG.API.AUDIO_TRANSLATE }}</h3>
-
+      <h3>■音声認識 {{ CFG.API.AUDIO_TRANSCRIPT }}</h3>
+      <h3>■音声英訳 {{ CFG.API.AUDIO_TRANSLATE }}</h3>
+      <br>
       <button type="button" ref="$recBtn" style="display:none">録音開始</button>
       <input type="file" ref="$audioFile" accept="audio/*" /><br><br>
       <audio controls ref="$audio"></audio><br>
@@ -622,9 +567,31 @@ window.onload = () => {
   display: flexbox;
   width: auto;
   height: auto;
-  margin: 10px 0px 20px 0px;
-  padding: 5px 10px 10px 10px;
+  margin: 10px 20px 20px 0px;
+  padding: 20px 10px 30px 15px;
   box-shadow: darkslategray 0px 5px 5px 0px;
+}
+
+.label {
+  display: inline-block;
+  width: 100px;
+  text-align: left;
+  margin: 0px 10px 5px 0px;
+}
+
+h3 {
+  margin: 0px 0px 5px 0px;
+}
+
+.prompt {
+  width: 80%;
+  min-height: 80px;
+  margin: 10px 0px 10px 0px;
+}
+
+
+select {
+  width: 200px;
 }
 
 button {
