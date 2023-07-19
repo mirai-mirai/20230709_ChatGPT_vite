@@ -355,8 +355,6 @@ const initMic = async () => {
     if ($language.value!.value != '')
       body.append('language', $language.value!.value);
 
-    console.log(...body.entries())
-
     const response = await fetch(
       type == 'transcript' ? CFG.API.AUDIO_TRANSCRIPT : CFG.API.AUDIO_TRANSLATE,
       { method: 'POST', headers, body })
