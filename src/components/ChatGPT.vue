@@ -44,7 +44,7 @@ const $instructions = ref<HTMLTextAreaElement>()
 const $gptModel = ref<HTMLSelectElement>()
 const $samples = ref<HTMLTextAreaElement>()
 const $prompts = ref<HTMLTextAreaElement>()
-const chatTemperature = ref<number>(0.7)
+const chatTemperature = ref<number>(1)
 const chatn = ref<number>(1)
 const maxTokens = ref<number>(1000)
 const initChat = () => {
@@ -62,6 +62,7 @@ const initChat = () => {
 
   const disp = (msg: string) => { $chatReceived!.value!.innerHTML = msg }
   const chatModel = $chatSample.value as HTMLSelectElement
+  disp('test<br>test')
   const prompts = CFG.PROMPTS
   prompts.forEach((obj: { name: string }) => {
     const option = document.createElement('option')
@@ -129,7 +130,8 @@ const initChat = () => {
     console.log(json)
     let result = '<table>'
     json.choices.forEach((obj: { message: { content: string } }, id: number) => {
-      result += `<tr><td width='auto'>回答${id + 1}</td><td>${obj.message.content}</td style='background-color:"#fff"'></tr>`
+      const content = obj.message.content.replace(/\n/g, '<br>')
+      result += `<tr><td width='auto'>回答${id + 1}</td><td>${content}</td style='background-color:"#fff"'></tr>`
     })
     result += '</table>'
     disp(result)
@@ -144,6 +146,10 @@ const initChat = () => {
 const $imgGenQ = ref<HTMLElement>()
 const $imgGenA = ref<HTMLElement>()
 const $imgGenR = ref<HTMLImageElement>()
+const initImgGen = () => {
+
+}
+
 const imgGen = async () => {
   console.clear()
   const dispResult = (res: string) => {
@@ -184,6 +190,95 @@ const brushSize = ref<number>(20)
 const imgSize = ref<string>('256x256')
 const imgNum = ref<number>(1)
 let blobUploaded: string
+
+const initImgEdit = () => {
+  console.log('initImgEdit')
+  const $img = $imgEditIn.value as HTMLImageElement
+  const $canvas = $imgEditCanvas.value as HTMLCanvasElement
+  const resizeImg = async () => {
+    const ratio = Math.min(1, 512 / Math.max($img.width, $img.height))
+    const resizedBMP = await createImageBitmap($img, {
+      resizeWidth: $img.width * ratio,
+      resizeHeight: $img.height * ratio,
+      resizeQuality: 'high'
+    })
+    console.log(`resize: ${$img.width}x${$img.height} -> ${resizedBMP.width}x${resizedBMP.height}`)
+    const canvasSize = Math.max(resizedBMP.width, resizedBMP.height)
+    $canvas.width = canvasSize
+    $canvas.height = canvasSize
+    const ctx = $canvas.getContext('2d')!
+    ctx.fillStyle = 'black'
+    const { width, height } = resizedBMP
+    if (width < canvasSize)
+      ctx.fillRect(width, 0, canvasSize - width, canvasSize)
+    else
+      ctx.fillRect(0, height, canvasSize, canvasSize - height)
+    ctx.drawImage(resizedBMP, 0, 0)
+  }
+  $img.onload = resizeImg
+  resizeImg()
+  let isDrawing: boolean = false
+  $canvas.addEventListener('mousemove', (e: MouseEvent) => {
+    if (!isDrawing) return
+    const x = e.offsetX * $canvas.width / $canvas.clientWidth
+    const y = e.offsetY * $canvas.height / $canvas.clientHeight
+    const s = brushSize.value
+    $canvas.getContext('2d')!.clearRect(x - s, y - s, s * 2, s * 2)
+  })
+  const mouseDown = () => { isDrawing = true }
+  const mouseUp = () => { isDrawing = false }
+  const cursorOn = () => { $canvas.style.cursor = 'crosshair' }
+  const cursorOff = () => { $canvas.style.cursor = 'default' }
+  $canvas.addEventListener('mousedown', mouseDown)
+  $canvas.addEventListener('mouseup', mouseUp)
+  $canvas.addEventListener('mouseenter', cursorOn)
+  $canvas.addEventListener('mouseout', () => { mouseUp(); cursorOff() })
+
+  const dropImage = (e: DragEvent) => {
+    e.preventDefault()
+    const src = e.dataTransfer!.getData('text/plain')
+    if (src) {
+      $imgEditIn.value!.src = src
+      resizeImg()
+      return
+    }
+
+    if (!e.dataTransfer!.files.length) return
+    const file = (e as DragEvent).dataTransfer!.files[0]
+    if (!file.type.startsWith('image/')) return
+    if (blobUploaded) URL.revokeObjectURL(blobUploaded)
+    blobUploaded = URL.createObjectURL(file)
+    $imgEditIn.value!.src = blobUploaded
+    resizeImg()
+    $canvas.style.boxShadow = 'none'
+  }
+
+  $canvas.addEventListener('dragover', e => {
+    e.preventDefault()
+    $canvas.style.boxShadow = '5px 5px 5px 5px #888888'
+  })
+  $canvas.addEventListener('mouseout', e => {
+    $canvas.style.boxShadow = 'none'
+  })
+  $canvas.addEventListener('mouseup', e => {
+    e.preventDefault()
+    $canvas.style.boxShadow = 'none'
+  })
+  $canvas.addEventListener('mouseleave', e => {
+    $canvas.style.boxShadow = 'none'
+  })
+  $canvas.addEventListener('drop', dropImage)
+
+  $resetMask.value!.addEventListener('click', resizeImg)
+
+  const $imgDraggables = [$imgGenR, $imgEditOut1, $imgEditOut2, $imgEditOut3]
+  $imgDraggables.forEach($item => {
+    $item.value!.addEventListener('dragstart', e => {
+      e.dataTransfer!.setData('text/plain', $item.value!.src)
+    })
+  })
+
+}
 
 const uploadImg = () => {
   const file = $imgEditFile.value!.files![0]
@@ -269,7 +364,7 @@ const audioBlobs: BlobPart[] = []
 let audioBlob: Blob | null = null
 let blobAudio: string
 
-const initMic = async () => {
+const initAudio = async () => {
   console.log('initMic')
   const audioFile = $audioFile.value as HTMLInputElement
   audioFile.addEventListener('change', e => {
@@ -371,92 +466,9 @@ const initMic = async () => {
 
 window.onload = () => {
   initChat()
-  initMic()
-  const $img = $imgEditIn.value as HTMLImageElement
-  const $canvas = $imgEditCanvas.value as HTMLCanvasElement
-  const resizeImg = async () => {
-    const ratio = Math.min(1, 512 / Math.max($img.width, $img.height))
-    const resizedBMP = await createImageBitmap($img, {
-      resizeWidth: $img.width * ratio,
-      resizeHeight: $img.height * ratio,
-      resizeQuality: 'high'
-    })
-    console.log(`resize: ${$img.width}x${$img.height} -> ${resizedBMP.width}x${resizedBMP.height}`)
-    const canvasSize = Math.max(resizedBMP.width, resizedBMP.height)
-    $canvas.width = canvasSize
-    $canvas.height = canvasSize
-    const ctx = $canvas.getContext('2d')!
-    ctx.fillStyle = 'black'
-    const { width, height } = resizedBMP
-    if (width < canvasSize)
-      ctx.fillRect(width, 0, canvasSize - width, canvasSize)
-    else
-      ctx.fillRect(0, height, canvasSize, canvasSize - height)
-    ctx.drawImage(resizedBMP, 0, 0)
-  }
-  $img.onload = resizeImg
-  resizeImg()
-  let isDrawing: boolean = false
-  $canvas.addEventListener('mousemove', (e: MouseEvent) => {
-    if (!isDrawing) return
-    const x = e.offsetX * $canvas.width / $canvas.clientWidth
-    const y = e.offsetY * $canvas.height / $canvas.clientHeight
-    const s = brushSize.value
-    $canvas.getContext('2d')!.clearRect(x - s, y - s, s * 2, s * 2)
-  })
-  const mouseDown = () => { isDrawing = true }
-  const mouseUp = () => { isDrawing = false }
-  const cursorOn = () => { $canvas.style.cursor = 'crosshair' }
-  const cursorOff = () => { $canvas.style.cursor = 'default' }
-  $canvas.addEventListener('mousedown', mouseDown)
-  $canvas.addEventListener('mouseup', mouseUp)
-  $canvas.addEventListener('mouseenter', cursorOn)
-  $canvas.addEventListener('mouseout', () => { mouseUp(); cursorOff() })
-
-  const dropImage = (e: DragEvent) => {
-    e.preventDefault()
-    console.log(e)
-    const src = e.dataTransfer!.getData('text/plain')
-    if (src) {
-      $imgEditIn.value!.src = src
-      resizeImg()
-      return
-    }
-
-    if (!e.dataTransfer!.files.length) return
-    const file = (e as DragEvent).dataTransfer!.files[0]
-    if (!file.type.startsWith('image/')) return
-    if (blobUploaded) URL.revokeObjectURL(blobUploaded)
-    blobUploaded = URL.createObjectURL(file)
-    $imgEditIn.value!.src = blobUploaded
-    resizeImg()
-    $canvas.style.boxShadow = 'none'
-  }
-
-  $canvas.addEventListener('dragover', e => {
-    e.preventDefault()
-    $canvas.style.boxShadow = '5px 5px 5px 5px #888888'
-  })
-  $canvas.addEventListener('mouseout', e => {
-    $canvas.style.boxShadow = 'none'
-  })
-  $canvas.addEventListener('mouseup', e => {
-    e.preventDefault()
-    $canvas.style.boxShadow = 'none'
-  })
-  $canvas.addEventListener('mouseleave', e => {
-    $canvas.style.boxShadow = 'none'
-  })
-  $canvas.addEventListener('drop', dropImage)
-
-  $resetMask.value!.addEventListener('click', resizeImg)
-
-  const $imgDraggables = [$imgGenR, $imgEditOut1, $imgEditOut2, $imgEditOut3]
-  $imgDraggables.forEach($item => {
-    $item.value!.addEventListener('dragstart', e => {
-      e.dataTransfer!.setData('text/plain', $item.value!.src)
-    })
-  })
+  initImgGen()
+  initImgEdit()
+  initAudio()
 }
 
 </script>
