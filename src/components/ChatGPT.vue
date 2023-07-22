@@ -47,6 +47,11 @@ const $prompts = ref<HTMLTextAreaElement>()
 const chatTemperature = ref<number>(1)
 const chatn = ref<number>(1)
 const maxTokens = ref<number>(1000)
+const completion_tokens = ref<number>(0)
+const prompt_tokens = ref<number>(0)
+const completion_length = ref<number>(0)
+const prompt_length = ref<number>(0)
+
 const initChat = () => {
   console.log('initChat')
 
@@ -62,7 +67,6 @@ const initChat = () => {
 
   const disp = (msg: string) => { $chatReceived!.value!.innerHTML = msg }
   const chatModel = $chatSample.value as HTMLSelectElement
-  disp('test<br>test')
   const prompts = CFG.PROMPTS
   prompts.forEach((obj: { name: string }) => {
     const option = document.createElement('option')
@@ -91,6 +95,10 @@ const initChat = () => {
   chatModel.addEventListener('change', setPrompts)
 
   const sendPrompt = async () => {
+    completion_tokens.value = 0
+    prompt_tokens.value = 0
+    completion_length.value = 0
+    prompt_length.value = 0
     disp('Loading...')
     console.clear()
 
@@ -128,13 +136,19 @@ const initChat = () => {
     const json = await response.json()
     console.log(response)
     console.log(json)
-    let result = '<table>'
+    let result = '<table border="1" bordercolor="#555">'
+    completion_length.value = 0
     json.choices.forEach((obj: { message: { content: string } }, id: number) => {
-      const content = obj.message.content.replace(/\n/g, '<br>')
-      result += `<tr><td width='auto'>回答${id + 1}</td><td>${content}</td style='background-color:"#fff"'></tr>`
+      const res = obj.message.content
+      completion_length.value += res.length
+      const content = res.replace(/\n/g, '<br>')
+      result += `<tr><td width='100px'>回答${id + 1}</td><td>${content}</td style='background-color:"#fff"'></tr>`
     })
     result += '</table>'
     disp(result)
+    prompt_length.value = body.length
+    completion_tokens.value = json.usage.completion_tokens
+    prompt_tokens.value = json.usage.prompt_tokens
   }
 
   $sendPrompt.value!.addEventListener('click', sendPrompt)
@@ -145,7 +159,11 @@ const initChat = () => {
 // 画像作成
 const $imgGenQ = ref<HTMLElement>()
 const $imgGenA = ref<HTMLElement>()
-const $imgGenR = ref<HTMLImageElement>()
+const $imgGenR1 = ref<HTMLImageElement>()
+const $imgGenR2 = ref<HTMLImageElement>()
+const $imgGenR3 = ref<HTMLImageElement>()
+const imgGenSize = ref<string>('256x256')
+const imgGenNum = ref<number>(1)
 const initImgGen = () => {
 
 }
@@ -160,17 +178,32 @@ const imgGen = async () => {
   const prompt = ($imgGenQ.value as HTMLTextAreaElement).value
   const response_format = ["url", "b64_json"][1]
 
+  // const body = JSON.stringify(
+  //   { prompt, size: imgGenSize.value, response_format })
   const body = JSON.stringify(
-    { prompt, size: '256x256', response_format })
+    { prompt, size: imgGenSize.value, n: Number(imgGenNum.value), response_format })
+  // const body = { prompt, size: imgGenSize.value, n: imgGenNum.value, response_format }
+  // const body = "prompt=" + prompt + "&size=" + imgGenSize.value + "&n=" + imgGenNum.value + "&response_format=" + response_format
+  console.log(JSON.stringify({ "test": 123 }))
+
 
   console.log(body)
 
   const response = await fetch(
-    CFG.API.IMG_GEN, { method: 'POST', headers, body })
+    CFG.API.IMG_GEN, { method: 'POST', headers, body: body })
   console.log(response)
 
   const json = await response.json()
-  $imgGenR.value!.src = "data:image/png;base64," + json.data[0].b64_json
+  console.log(json)
+  const imgTags = [$imgGenR1, $imgGenR2, $imgGenR3]
+  imgTags.forEach(($item, i) => {
+    console.log(i, json.data.length)
+    if (i < json.data.length)
+      $item.value!.src = "data:image/png;base64," + json.data[i].b64_json
+    else
+      $item.value!.src = ""
+  })
+  // $imgGenR1.value!.src = "data:image/png;base64," + json.data[0].b64_json
 
   dispResult('Received')
 
@@ -271,7 +304,7 @@ const initImgEdit = () => {
 
   $resetMask.value!.addEventListener('click', resizeImg)
 
-  const $imgDraggables = [$imgGenR, $imgEditOut1, $imgEditOut2, $imgEditOut3]
+  const $imgDraggables = [$imgGenR1, $imgGenR2, $imgGenR3, $imgEditOut1, $imgEditOut2, $imgEditOut3]
   $imgDraggables.forEach($item => {
     $item.value!.addEventListener('dragstart', e => {
       e.dataTransfer!.setData('text/plain', $item.value!.src)
@@ -517,6 +550,23 @@ window.onload = () => {
       <div class="label">maxTokens</div>
       <input type="number" min="1" max="2000" v-model.number="maxTokens" step="100" /><br>
       <button type="button" ref="$sendPrompt">送信</button><br>
+      <table border="1" bordercolor="#555" padding="2px">
+        <tr>
+          <td></td>
+          <td>文字</td>
+          <td>トークン</td>
+        </tr>
+        <tr>
+          <td>プロンプト</td>
+          <td>{{ prompt_length }}</td>
+          <td>{{ prompt_tokens }}</td>
+        </tr>
+        <tr>
+          <td>レスポンス</td>
+          <td>{{ completion_length }}</td>
+          <td>{{ completion_tokens }}</td>
+        </tr>
+      </table><br>
       <div class="answer" ref="$chatReceived"></div>
     </div>
 
@@ -527,9 +577,26 @@ window.onload = () => {
       <div>プロンプト：</div>
       <textarea class="question" ref="$imgGenQ">a fighter jet is flying in the sky</textarea>
       <br>
+      <div>出力画像サイズ</div>
+      <input type="radio" id="256" value="256x256" v-model="imgGenSize" />
+      <label for="256">256</label>
+      <input type="radio" id="512" value="512x512" v-model="imgGenSize" />
+      <label for="512">512</label>
+      <input type="radio" id="1024" value="1024x1024" v-model="imgGenSize" />
+      <label for="1024">1024</label><br>
+      <div>出力画像数</div>
+      <input type="radio" id="1" value=1 v-model.number="imgGenNum" />
+      <label for="1">1</label>
+      <input type="radio" id="2" value=2 v-model.number="imgGenNum" />
+      <label for="2">2</label>
+      <input type="radio" id="3" value=3 v-model.number="imgGenNum" />
+      <label for="3">3</label><br>
+
       <button type="button" @click="imgGen()">画像生成</button><br>
       <div class="answer" ref="$imgGenA"> </div>
-      <img class="imgResult" ref="$imgGenR" draggable="true" /><br>
+      <img class="imgResult" ref="$imgGenR1" draggable="true" />
+      <img class="imgResult" ref="$imgGenR2" draggable="true" />
+      <img class="imgResult" ref="$imgGenR3" draggable="true" />
     </div>
 
     <!-- 画像編集 -->
@@ -618,6 +685,11 @@ window.onload = () => {
   margin: 10px 20px 20px 0px;
   padding: 20px 10px 30px 15px;
   box-shadow: darkslategray 0px 5px 5px 0px;
+}
+
+th,
+td {
+  padding: 0px 10px;
 }
 
 .label {
