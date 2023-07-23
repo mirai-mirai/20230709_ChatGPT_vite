@@ -51,8 +51,9 @@ const completion_tokens = ref<number>(0)
 const prompt_tokens = ref<number>(0)
 const completion_length = ref<number>(0)
 const prompt_length = ref<number>(0)
+const htmlData = ref<string[]>([])
 
-const initChat = () => {
+const initChat = async () => {
   console.log('initChat')
 
   const textareaEls = document.querySelectorAll("textarea");
@@ -66,6 +67,19 @@ const initChat = () => {
   })
 
   const disp = (msg: string) => { $chatReceived!.value!.innerHTML = msg }
+
+  // 天気情報を取得
+  const getWeather = async (lat: number, lon: number) => {
+    const args = `?appid=${CFG.K3 + CFG.K4}&lat=${lat}&lon=${lon}&units=metric&lang=ja`
+    const URL = CFG.API.WEATHER + args
+    console.log(URL)
+    const weather = await fetch(CFG.API.WEATHER + args, { method: 'GET' })
+    console.log(weather)
+    const weatherJson = await weather.json()
+    console.log(weatherJson)
+    return JSON.stringify(weatherJson.daily)
+  }
+
   const chatModel = $chatSample.value as HTMLSelectElement
   const prompts = CFG.PROMPTS
   prompts.forEach((obj: { name: string }) => {
@@ -79,6 +93,9 @@ const initChat = () => {
     option.text = model_name
     $gptModel.value!.appendChild(option)
   })
+
+  // プロンプトの変更イベント
+  let functions: Object[] = []
   const setPrompts = () => {
     const example = prompts.find((obj: { name: string }) => obj.name == chatModel.value)
     $instructions.value!.value = example!.instructions
@@ -90,6 +107,8 @@ const initChat = () => {
     })
     $samples.value!.value = sample
     $prompts.value!.value = example!.prompts
+    functions = example!.functions ? example!.functions : {}
+    console.log(functions)
   }
   setPrompts()
   chatModel.addEventListener('change', setPrompts)
@@ -106,7 +125,7 @@ const initChat = () => {
 
     // Instructions
     messages.push({
-      "role": "assistant",
+      "role": "system",
       "content": $instructions.value?.value
     })
     promptLength += $instructions.value!.value!.length
@@ -131,32 +150,80 @@ const initChat = () => {
     })
     promptLength += $prompts.value!.value!.length
 
-    // リクエストボディ
-    const bodyJSON = {
+    // リクエストボディ 
+    const bodyJSON: { [key: string]: any } = {
       'model': $gptModel.value!.value,
       messages,
       "temperature": chatTemperature.value,
       "max_tokens": maxTokens.value,
       "n": chatn.value
     }
+    if (functions?.length > 0)
+      bodyJSON['functions'] = functions
+
     console.log(JSON.stringify(bodyJSON, null, '\t'))
     const body = JSON.stringify(bodyJSON)
+    htmlData.value = []
 
     const response = await fetch(
       CFG.API.CHAT, { method: 'POST', headers, body })
     const json = await response.json()
     console.log(response)
     console.log(json)
-    let result = '<table border="1" bordercolor="#555">'
+    disp('Received')
     completion_length.value = 0
-    json.choices.forEach((obj: { message: { content: string } }, id: number) => {
-      const res = obj.message.content
-      completion_length.value += res.length
-      const content = res.replace(/\n/g, '<br>')
-      result += `<tr><td width='100px'>回答${id + 1}</td><td>${content}</td style='background-color:"#fff"'></tr>`
+    type Response = {
+      finish_reason: string,
+      message: {
+        content: string,
+        function_call: {
+          name: string,
+          arguments: string
+        }
+      }
+    }
+    json.choices.forEach(async (response: Response, id: number) => {
+      // FunctionCallは表示しない
+      let content: string = ''
+      let res: string = ''
+
+      if (response!.finish_reason == 'function_call') {
+        const funcName = response!.message!.function_call.name
+        const funcArgsJSON = response!.message!.function_call.arguments
+        const funcArgs = JSON.parse(funcArgsJSON)
+        console.log(`関数名：${funcName}、引き数：${funcArgsJSON}`)
+
+        content = await getWeather(funcArgs.lat, funcArgs.lon)
+
+        completion_length.value += funcName.length + funcArgsJSON.length
+        // 関数の戻り値をAPIに返してやる
+        messages.push({
+          "role": "function",
+          "name": funcName,
+          "content": content
+        })
+        bodyJSON['n'] = 1
+        delete bodyJSON['functions']
+        console.log(JSON.stringify(bodyJSON, null, '\t'))
+        disp('2nd Loading...')
+        const body = JSON.stringify(bodyJSON)
+        const response2 = await fetch(
+          CFG.API.CHAT, { method: 'POST', headers, body })
+        const json = await response2.json()
+        console.log(response2)
+        console.log(json)
+        res = json.choices[0].message.content
+        completion_length.value += res.length
+        content = res.replace(/\n/g, '<br>')
+        htmlData.value[id] = content
+
+      } else {
+        res = response.message.content ? response.message.content : ''
+        completion_length.value += res.length
+        content = res.replace(/\n/g, '<br>')
+        htmlData.value[id] = content
+      }
     })
-    result += '</table>'
-    disp(result)
     prompt_length.value = promptLength
     completion_tokens.value = json.usage.completion_tokens
     prompt_tokens.value = json.usage.prompt_tokens
@@ -189,19 +256,12 @@ const imgGen = async () => {
   const prompt = ($imgGenQ.value as HTMLTextAreaElement).value
   const response_format = ["url", "b64_json"][1]
 
-  // const body = JSON.stringify(
-  //   { prompt, size: imgGenSize.value, response_format })
   const body = JSON.stringify(
     { prompt, size: imgGenSize.value, n: Number(imgGenNum.value), response_format })
-  // const body = { prompt, size: imgGenSize.value, n: imgGenNum.value, response_format }
-  // const body = "prompt=" + prompt + "&size=" + imgGenSize.value + "&n=" + imgGenNum.value + "&response_format=" + response_format
-  console.log(JSON.stringify({ "test": 123 }))
-
-
   console.log(body)
 
   const response = await fetch(
-    CFG.API.IMG_GEN, { method: 'POST', headers, body: body })
+    CFG.API.IMG_GEN, { method: 'POST', headers, body })
   console.log(response)
 
   const json = await response.json()
@@ -214,7 +274,6 @@ const imgGen = async () => {
     else
       $item.value!.src = ""
   })
-  // $imgGenR1.value!.src = "data:image/png;base64," + json.data[0].b64_json
 
   dispResult('Received')
 
@@ -416,13 +475,10 @@ const initAudio = async () => {
     if (blobAudio) URL.revokeObjectURL(blobUploaded)
     blobAudio = URL.createObjectURL(file)
     $audio.value!.src = blobAudio
-    dispResult('')
-    dispResult2('')
   })
 
   const languages = CFG.AUDIO_LANGUAGES
   languages.forEach((lang: { text: string, value: string }) => {
-    console.log(lang)
     const option = document.createElement('option')
     option.text = lang.text
     option.value = lang.value
@@ -522,7 +578,7 @@ window.onload = () => {
 
     <!-- タイトル -->
     <h1 id="title">OpenAI-APIの全機能をブラウザから使ってみる </h1>
-    <h3 id="author">T.Shiozaki 2023/7/16</h3>
+    <h3 id="author">T.Shiozaki 2023/7/23</h3>
 
     <!-- モデル一覧 -->
     <div class="card">
@@ -531,6 +587,8 @@ window.onload = () => {
       <button type="button" @click="listmodels()">OPENAI モデル一覧取得</button>
       <div class="answer" ref="$models"></div>
     </div>
+
+    <!-- <div v-for="html in htmlData" v-html="html"></div> -->
 
     <!-- Chat -->
     <div class="card">
@@ -579,6 +637,13 @@ window.onload = () => {
         </tr>
       </table><br>
       <div class="answer" ref="$chatReceived"></div>
+      <table border=1 bordercolor="#555" padding="2px">
+        <tr v-for="(data, idx) in  htmlData ">
+          <td width="80px">回答 {{ idx + 1 }}</td>
+          <td v-html="data"></td>
+        </tr>
+      </table>
+
     </div>
 
     <!-- 画像生成 -->

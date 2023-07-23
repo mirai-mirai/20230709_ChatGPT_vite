@@ -5,6 +5,8 @@ interface CFG { [key: string]: any }
 export const CFG: CFG = {
   K1: 'sk-PCEoc83o19vFaEXzWy0LT',
   K2: '3BlbkFJRA4aYWSljJ5c2rknTgJ3',
+  K3: 'abd8c52d640ab497',
+  K4: 'fd5fc52fe37d9cfc',
   ORG_ID: 'org-k42yoMTxV4ogAL4ztJyniOxB',
   API: {
     MODELS: 'https://api.openai.com/v1/models',
@@ -15,6 +17,7 @@ export const CFG: CFG = {
     AUDIO_TRANSCRIPT: 'https://api.openai.com/v1/audio/transcriptions',
     AUDIO_TRANSLATE: 'https://api.openai.com/v1/audio/translations',
     MODERATIONS: 'https://api.openai.com/v1/moderations',
+    WEATHER: 'https://api.openweathermap.org/data/3.0/onecall',
   },
   CHAT_MODELS: [
     'gpt-3.5-turbo',
@@ -29,9 +32,35 @@ export const CFG: CFG = {
   PROMPTS:
     [
       {
+        name: '天気予報（API連携）',
+        instructions: 'userからの気象に関する質問に答えなさい。質問は日本語で入力される。回答も日本語ですること。',
+        samples: [],
+        prompts: '明日の東京の天気と日の出時刻は？',
+        functions: [
+          {
+            "name": "get_weather",
+            "description": "日単位の天気情報を取得する",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "lon": {
+                  "type": "number",
+                  "description": "経度"
+                },
+                "lat": {
+                  "type": "number",
+                  "description": "緯度"
+                },
+                "unit": { "type": "string", "description": "単位" }
+              },
+              "required": ["longitude", "latitude"]
+            }
+          }]
+      },
+      {
         name: '問題作成',
         instructions: '中学校2年生の数学の問題を１つ作成しなさい。回答例も作成しなさい。',
-        samples: ['', '問題：ある長方形の縦の長さは4cmで、横の長さは6cmです。この長方形の面積を求めなさい。\n\
+        samples: ['', '問題：ある長方形の縦の長さは4cmで、横の長さは6cmです。この長方形の面積を求めなさい。\
 回答：長方形の面積は、縦の長さ × 横の長さで求めることができます。したがって、4cm × 6cm = 24cm^2となります。よって、この長方形の面積は24平方センチメートルです。'],
         prompts: '',
       },
@@ -130,6 +159,12 @@ export const CFG: CFG = {
         instructions: '五七五の形式で標語を１つ作りなさい。userが指定したテーマで作りなさい。',
         samples: ['人権', '差別の根　無くして育てる　平和の根'],
         prompts: '労働環境',
+      },
+      {
+        name: '文章校正',
+        instructions: 'あなたは大学の先生。userの文章を正しい日本語に言い換えなさい。誤字脱字も修正しなさい。',
+        samples: [],
+        prompts: 'ほんとすません。今日はお休みしま。議事録は後程作成いたせます。 '
       },
       {
         name: 'ユーモアセンス',
