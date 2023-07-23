@@ -101,12 +101,17 @@ const initChat = () => {
     prompt_length.value = 0
     disp('Loading...')
     console.clear()
-
     let messages: Object[] = []
+    let promptLength: number = 0
+
+    // Instructions
     messages.push({
       "role": "assistant",
       "content": $instructions.value?.value
     })
+    promptLength += $instructions.value!.value!.length
+
+    // Samples
     const samples = $samples.value?.value.split('\n')
     let isQuestion: boolean = true
     samples?.forEach((s: string) => {
@@ -116,11 +121,17 @@ const initChat = () => {
         "content": s.substring(2)
       })
       isQuestion = !isQuestion
+      promptLength += s.substring(2).length
     })
+
+    // Prompts
     messages.push({
       "role": "user",
       "content": $prompts.value?.value
     })
+    promptLength += $prompts.value!.value!.length
+
+    // リクエストボディ
     const bodyJSON = {
       'model': $gptModel.value!.value,
       messages,
@@ -146,7 +157,7 @@ const initChat = () => {
     })
     result += '</table>'
     disp(result)
-    prompt_length.value = body.length
+    prompt_length.value = promptLength
     completion_tokens.value = json.usage.completion_tokens
     prompt_tokens.value = json.usage.prompt_tokens
   }
