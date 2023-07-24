@@ -68,6 +68,7 @@ const initChat = async () => {
 
   const disp = (msg: string) => { $chatReceived!.value!.innerHTML = msg }
 
+
   // 天気情報を取得
   const getWeather = async (lat: number, lon: number) => {
     const args = `?appid=${CFG.K3 + CFG.K4}&lat=${lat}&lon=${lon}&units=metric&lang=ja`
@@ -221,6 +222,8 @@ const initChat = async () => {
         res = response.message.content ? response.message.content : ''
         completion_length.value += res.length
         content = res.replace(/\n/g, '<br>')
+        content = res.replace(/\\"/g, '"')
+        content = res.replace(/```/g, '')
         htmlData.value[id] = content
       }
     })
@@ -588,8 +591,6 @@ window.onload = () => {
       <div class="answer" ref="$models"></div>
     </div>
 
-    <!-- <div v-for="html in htmlData" v-html="html"></div> -->
-
     <!-- Chat -->
     <div class="card">
       <h3>■チャット {{ CFG.API.CHAT }}</h3>
@@ -651,7 +652,7 @@ window.onload = () => {
       <h3>■画像生成 {{ CFG.API.IMG_GEN }}</h3>
       <br>
       <div>プロンプト：</div>
-      <textarea class="question" ref="$imgGenQ">a fighter jet is flying in the sky</textarea>
+      <textarea class="question" ref="$imgGenQ">{{ CFG.IMG_GEN_PROMPT }}</textarea>
       <br>
       <div>出力画像サイズ</div>
       <input type="radio" id="256" value="256x256" v-model="imgGenSize" />
@@ -692,7 +693,7 @@ window.onload = () => {
       {{ brushSize }}<br>
       <button type="button" ref="$resetMask">マスクのクリア</button><br>
       プロンプト：<br>
-      <textarea class="question" ref="$imgEditQ">the moon is in the sky</textarea>
+      <textarea class="question" ref="$imgEditQ">{{ CFG.IMG_EDIT_PROMPT }}</textarea>
       <br>
       <div>出力画像サイズ</div>
       <input type="radio" id="256" value="256x256" v-model="imgSize" />

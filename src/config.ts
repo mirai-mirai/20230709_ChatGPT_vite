@@ -161,6 +161,12 @@ export const CFG: CFG = {
         prompts: '労働環境',
       },
       {
+        name: 'ロゴ作成',
+        instructions: 'userが指定したテーマに沿ったロゴを１つ作りなさい。ロゴは正方形で、サイズは100x100ピクセルとする。出力はSVG形式とする。',
+        samples: [],
+        prompts: '先進的なIT企業の会社ロゴを作りなさい。サイズは100x100ピクセルで、青を基調として洗練されたイメージのものを作りなさい。',
+      },
+      {
         name: '文章校正',
         instructions: 'あなたは大学の先生。userの文章を正しい日本語に言い換えなさい。誤字脱字も修正しなさい。',
         samples: [],
@@ -173,6 +179,8 @@ export const CFG: CFG = {
         prompts: '最高の上司とはどんな人？',
       },
     ],
+  IMG_GEN_PROMPT: 'お花畑と夜空',
+  IMG_EDIT_PROMPT: '蝶が飛んでいる',
   AUDIO_LANGUAGES: [
     { text: '', value: '' },
     { text: '日本語', value: 'ja' },
