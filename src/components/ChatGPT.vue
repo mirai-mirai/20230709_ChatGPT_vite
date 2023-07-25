@@ -230,7 +230,7 @@ const initChat = async () => {
           console.log('iframe')
           const iFrame = document.createElement('iframe')
           iFrame.srcdoc = res
-          // iFrame.allow = "fullscreen,camera,Microphone"
+          iFrame.allow = "fullscreen;camera;microphone"
           // iFrame.width = "100%"
           // iFrame.height = "300px"
           iFrame.style.backgroundColor = "gray"
