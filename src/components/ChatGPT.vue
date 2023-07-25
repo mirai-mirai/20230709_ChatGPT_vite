@@ -56,6 +56,11 @@ const htmlData = ref<string[]>([])
 const initChat = async () => {
   console.log('initChat')
 
+  // const iFrame = document.createElement('iframe')
+  // iFrame.srcdoc = "<html><body>test<button>Click</button></body></html>"
+  // $chatReceived.value!.appendChild(iFrame)
+
+
   const textareaEls = document.querySelectorAll("textarea");
   textareaEls.forEach((el) => {
     el.style.height = "auto";
@@ -221,10 +226,28 @@ const initChat = async () => {
       } else {
         res = response.message.content ? response.message.content : ''
         completion_length.value += res.length
-        content = res.replace(/\n/g, '<br>')
-        content = res.replace(/\\"/g, '"')
-        content = res.replace(/```/g, '')
-        htmlData.value[id] = content
+        if (res.startsWith("<!DOCTYPE")) {
+          console.log('iframe')
+          const iFrame = document.createElement('iframe')
+          iFrame.srcdoc = res
+          // iFrame.allow = "fullscreen,camera,Microphone"
+          // iFrame.width = "100%"
+          // iFrame.height = "300px"
+          iFrame.style.backgroundColor = "gray"
+          iFrame.onload = () => {
+            console.log('iframe loaded')
+            console.log(iFrame.contentWindow!.document.body.scrollWidth, iFrame.contentWindow!.document.body.scrollHeight)
+            iFrame.style.width = iFrame.contentWindow!.document.body.scrollWidth + "px";
+            iFrame.style.height = iFrame.contentWindow!.document.body.scrollHeight + 100 + "px";
+            // iFrame.contentWindow?.postMessage('Hello from the parent.', '*')
+          }
+          $chatReceived.value!.appendChild(iFrame)
+        } else {
+          content = res.replace(/\n/g, '<br>')
+          content = res.replace(/\\"/g, '"')
+          content = res.replace(/```/g, '')
+          htmlData.value[id] = content
+        }
       }
     })
     prompt_length.value = promptLength
