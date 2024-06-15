@@ -3,11 +3,11 @@
 interface CFG { [key: string]: any }
 
 export const CFG: CFG = {
-  K1: 'sk-PCEoc83o19vFaEXzWy0LT',
-  K2: '3BlbkFJRA4aYWSljJ5c2rknTgJ3',
-  K3: 'abd8c52d640ab497',
-  K4: 'fd5fc52fe37d9cfc',
-  ORG_ID: 'org-k42yoMTxV4ogAL4ztJyniOxB',
+  K1: '',
+  K2: '',
+  K3: '',
+  K4: '',
+  ORG_ID: '',
   API: {
     MODELS: 'https://api.openai.com/v1/models',
     CHAT: 'https://api.openai.com/v1/chat/completions',
